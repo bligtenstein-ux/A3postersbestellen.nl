@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A3postersbestellen.nl — Snel & Scherp Gedrukt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green:        #3aaa35;
+    --green-dark:   #2a8a26;
+    --green-mid:    #44bb3f;
+    --green-light:  #eaf7ea;
+    --green-border: #b8e4b6;
+    --ink:          #111111;
+    --ink-mid:      #444444;
+    --ink-muted:    #767676;
+    --line:         #e2e2e2;
+    --bg:           #ffffff;
+    --bg-soft:      #f7f7f7;
+    --radius-sm:    6px;
+    --radius-md:    10px;
+    --radius-lg:    14px;
+    --font:         'Plus Jakarta Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  nav {
+    border-bottom: 1px solid var(--line);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 58px;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 100;
+  }
+  .logo {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-mark {
+    width: 40px;
+    height: 40px;
+    background: var(--green);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    flex-shrink: 0;
+    gap: 1px;
+  }
+  .logo-mark-sub {
+    font-size: 7px;
+    font-weight: 500;
+    opacity: 0.8;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .logo-name {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+  .logo-name em {
+    font-style: normal;
+    color: var(--green);
+  }
+  .logo-powered {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--ink-muted);
+    letter-spacing: 0;
+    margin-top: 1px;
+  }
+  .logo-powered a {
+    color: var(--green);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+  .nav-links a { color: inherit; text-decoration: none; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-phone { font-size: 13px; font-weight: 600; color: var(--green); text-decoration: none; }
+
+  .banner {
+    background: var(--green);
+    color: #fff;
+    text-align: center;
+    padding: 9px 1rem;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .banner strong { font-weight: 700; }
+
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 5rem;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 2.5rem;
+    align-items: start;
+  }
+
+  h1 {
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
+    color: var(--ink);
+  }
+  h1 em { font-style: normal; color: var(--green); }
+  .page-lead { font-size: 15px; color: var(--ink-muted); margin-bottom: 1.5rem; line-height: 1.6; }
+
+  /* ── HERO USP STRIP (vervangt usp-row) ── */
+  .hero-usps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 1.75rem;
+  }
+  .hero-usp-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-mid);
+    white-space: nowrap;
+  }
+  .hero-usp-pill .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    flex-shrink: 0;
+  }
+  .hero-usp-pill.accent {
+    background: var(--green-light);
+    border-color: var(--green-border);
+    color: var(--green-dark);
+    font-weight: 600;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .usp-row {
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+  .usp-cell {
+    flex: 1;
+    padding: 13px 15px;
+    border-right: 1px solid var(--line);
+    background: var(--bg-soft);
+  }
+  .usp-cell:last-child { border-right: none; }
+  .usp-cell strong { display: block; font-size: 13px; font-weight: 600; margin-bottom: 1px; }
+  .usp-cell span { font-size: 12px; color: var(--ink-muted); }
+
+  .staffel-wrap { margin-bottom: 1.75rem; }
+  .staffel-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .staffel-item {
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 11px 6px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+    position: relative;
+    background: #fff;
+  }
+  .staffel-item:hover { border-color: var(--green-mid); }
+  .staffel-item.active { border-color: var(--green); background: var(--green-light); }
+  .staffel-item.popular::before {
+    content: 'Populair';
+    position: absolute;
+    top: -9px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--green);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .staffel-qty { font-size: 11px; font-weight: 500; color: var(--ink-muted); margin-bottom: 4px; }
+  .staffel-item.active .staffel-qty { color: var(--green-dark); }
+  .staffel-price { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.02em; }
+  .staffel-item.active .staffel-price { color: var(--green-dark); }
+  .staffel-per { font-size: 10px; color: var(--ink-muted); margin-top: 1px; }
+  .staffel-hint { font-size: 12px; color: var(--green); font-weight: 500; min-height: 18px; }
+
+  .upload-wrap { margin-bottom: 1.75rem; }
+  .upload-zone {
+    border: 1.5px dashed var(--line);
+    border-radius: var(--radius-md);
+    padding: 2.25rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+    background: var(--bg-soft);
+  }
+  .upload-zone:hover, .upload-zone.dragover { border-color: var(--green-mid); background: var(--green-light); }
+  .upload-zone.has-file { border-style: solid; border-color: var(--green); background: var(--green-light); }
+  .upload-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .upload-zone.has-file .upload-title { color: var(--green-dark); }
+  .upload-sub { font-size: 13px; color: var(--ink-muted); margin-bottom: 12px; }
+  .upload-tags { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; }
+  .upload-tag {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 11px;
+    padding: 3px 10px;
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+  .upload-zone.has-file .upload-tag { background: rgba(255,255,255,0.6); border-color: var(--green-border); color: var(--green-dark); }
+
+  .preview-strip {
+    display: none;
+    border: 1px solid var(--green-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-top: 8px;
+    align-items: center;
+    gap: 12px;
+    background: var(--green-light);
+  }
+  .preview-strip.visible { display: flex; }
+  .preview-thumb {
+    width: 36px; height: 50px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--green-border);
+    font-size: 10px; font-weight: 700; color: var(--green);
+  }
+  .preview-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .preview-info { flex: 1; min-width: 0; }
+  .preview-filename { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--green-dark); }
+  .preview-meta { font-size: 11px; color: var(--green-mid); }
+  .preview-remove {
+    background: none; border: none; cursor: pointer; color: var(--ink-muted);
+    font-size: 20px; line-height: 1; padding: 2px 6px; border-radius: 4px; transition: color 0.12s;
+  }
+  .preview-remove:hover { color: #c00; }
+
+  .specs-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 1.75rem;
+  }
+  .spec-box { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; background: var(--bg-soft); }
+  .spec-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-muted); font-weight: 600; margin-bottom: 2px; }
+  .spec-val { font-size: 12px; font-weight: 600; }
+
+  .form-section { margin-bottom: 1.75rem; }
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--ink-mid); }
+  .field input, .field textarea {
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    font-family: var(--font);
+    font-size: 14px;
+    color: var(--ink);
+    background: #fff;
+    outline: none;
+    transition: border-color 0.12s;
+    width: 100%;
+  }
+  .field input:focus, .field textarea:focus { border-color: var(--green); }
+  .field textarea { resize: vertical; min-height: 72px; }
+
+  .betaal-achteraf {
+    margin-top: 14px;
+    background: var(--green-light);
+    border: 1px solid var(--green-border);
+    border-left: 3px solid var(--green);
+    border-radius: var(--radius-sm);
+    padding: 11px 14px;
+    font-size: 13px;
+    color: var(--green-dark);
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  /* RIGHT COLUMN */
+  .col-right { position: sticky; top: 74px; }
+  .order-card { border: 1.5px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; }
+
+  .card-header { background: var(--green-dark); padding: 18px 20px 16px; color: #fff; }
+  .card-header-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; margin-bottom: 8px; }
+  .price-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; }
+  .price-big { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.04em; line-height: 1; }
+  .price-unit { font-size: 13px; opacity: 0.6; }
+  .price-saving { font-size: 12px; font-weight: 500; min-height: 18px; color: rgba(255,255,255,0.7); }
+
+  .card-body { padding: 18px 20px; background: #fff; }
+
+  .qty-row {
+    display: flex; align-items: center;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .qty-btn {
+    width: 42px; height: 42px; border: none; background: var(--bg-soft);
+    color: var(--ink); font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background 0.1s; line-height: 1;
+  }
+  .qty-btn:hover { background: #e5e5e5; }
+  .qty-input {
+    flex: 1; border: none;
+    border-left: 1.5px solid var(--line); border-right: 1.5px solid var(--line);
+    text-align: center; font-family: var(--font); font-size: 1.2rem; font-weight: 700;
+    color: var(--ink); outline: none; height: 42px; background: #fff; width: 0; min-width: 0; padding: 0;
+  }
+  .qty-input::-webkit-inner-spin-button { display: none; }
+
+  .next-tier-msg { font-size: 12px; color: var(--green); font-weight: 500; text-align: center; min-height: 18px; margin-bottom: 14px; }
+  .next-tier-msg strong { font-weight: 700; }
+
+  .breakdown { border-top: 1px solid var(--line); padding-top: 14px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 7px; }
+  .br-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-muted); }
+  .br-row .val { font-weight: 500; color: var(--ink-mid); }
+  .br-row.total { font-size: 15px; font-weight: 700; color: var(--ink); padding-top: 7px; border-top: 1px solid var(--line); }
+  .br-row.total .val { color: var(--ink); }
+
+  .btn-order {
+    width: 100%; background: var(--green); color: #fff; border: none;
+    border-radius: var(--radius-sm); padding: 14px 20px;
+    font-family: var(--font); font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: background 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .btn-order:hover:not(:disabled) { background: var(--green-dark); }
+  .btn-order:disabled { background: var(--line); color: var(--ink-muted); cursor: not-allowed; }
+
+  .btn-reason { font-size: 11px; text-align: center; color: var(--ink-muted); min-height: 16px; margin-bottom: 14px; }
+
+  .trust-list { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .trust-item { font-size: 12px; color: var(--ink-muted); display: flex; align-items: center; gap: 8px; }
+  .trust-check {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--green-light); border: 1px solid var(--green-border);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: var(--green); font-weight: 700;
+  }
+
+  /* SUCCESS */
+  .success-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 999;
+    align-items: center; justify-content: center; padding: 2rem;
+  }
+  .success-overlay.visible { display: flex; }
+  .success-modal {
+    background: #fff; border-radius: var(--radius-lg); padding: 2.5rem 2rem;
+    max-width: 400px; width: 100%; text-align: center;
+    animation: modalIn 0.25s ease;
+  }
+  @keyframes modalIn { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .success-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--green-light); color: var(--green-dark);
+    border: 1px solid var(--green-border); border-radius: 999px;
+    font-size: 13px; font-weight: 600; padding: 6px 16px; margin-bottom: 1.25rem;
+  }
+  .success-modal h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.4rem; letter-spacing: -0.02em; }
+  .success-modal p { font-size: 14px; color: var(--ink-muted); margin-bottom: 1.25rem; }
+  .success-order-box { background: var(--bg-soft); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 1.25rem; text-align: left; }
+  .order-num { font-size: 1.1rem; font-weight: 700; color: var(--green); margin-bottom: 3px; }
+  .order-meta { font-size: 12px; color: var(--ink-muted); }
+  .btn-new {
+    width: 100%; background: var(--ink); color: #fff; border: none;
+    border-radius: var(--radius-sm); padding: 12px;
+    font-family: var(--font); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .btn-new:hover { background: #2d2d2d; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff; border-radius: 50%; animation: spin 0.65s linear infinite; }
+
+
+  /* ── EDITOR ── */
+  .editor-wrap { margin-bottom: 1.75rem; }
+
+  .editor-drop-zone {
+    border: 2px dashed var(--line);
+    border-radius: var(--radius-md);
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+    background: var(--bg-soft);
+  }
+  .editor-drop-zone:hover, .editor-drop-zone.dragover { border-color: var(--green-mid); background: var(--green-light); }
+  .editor-drop-zone input[type=file] { position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%; }
+  .editor-drop-title { font-size:14px;font-weight:600;margin-bottom:4px; }
+  .editor-drop-sub { font-size:13px;color:var(--ink-muted);margin-bottom:12px; }
+  .editor-drop-tags { display:flex;justify-content:center;flex-wrap:wrap;gap:6px; }
+  .editor-drop-tag { background:#fff;border:1px solid var(--line);border-radius:999px;font-size:11px;padding:3px 10px;color:var(--ink-muted);font-weight:500; }
+
+  /* canvas editor — zichtbaar na upload */
+  .editor-panel {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .editor-panel.visible { display: flex; }
+
+  .editor-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .editor-filename {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .editor-filename span { font-weight:400; color:var(--ink-muted); }
+  .btn-herlaad {
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .btn-herlaad:hover { border-color: var(--ink-muted); color: var(--ink); }
+
+  /* A3 canvas container — vaste aspect-ratio 1:√2 */
+  .canvas-container {
+    position: relative;
+    width: 100%;
+    background: #888;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    /* A3 aspect ratio: 297/420 = 0.707 */
+    aspect-ratio: 297 / 420;
+  }
+
+  /* afloop overlay — rode streepjeslijn 3mm van rand */
+  .canvas-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    /* afloop = 3mm op A3 bij 297×420 weergave = ~2.14% van breedte */
+    border: 1.5px solid rgba(210,35,35,0.75);
+    box-sizing: border-box;
+    margin: calc(2.14%);
+    border-radius: 0;
+  }
+  /* afloop label */
+  .canvas-container::after {
+    content: 'Afloopzone (3mm)';
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+    z-index: 4;
+    font-size: 10px;
+    font-family: var(--font);
+    font-weight: 600;
+    color: rgba(220,50,50,0.85);
+    pointer-events: none;
+    background: rgba(255,255,255,0.7);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  #previewCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 1;
+  }
+
+  /* geen afbeelding placeholder */
+  .canvas-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #aaa;
+    font-size: 13px;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  /* ── DPI METER ── */
+  .dpi-panel {
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+  }
+  .dpi-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .dpi-label { font-size: 12px; font-weight: 700; color: var(--ink-mid); text-transform: uppercase; letter-spacing: 0.06em; }
+  .dpi-value { font-size: 13px; font-weight: 600; color: var(--ink); }
+
+  .dpi-dots {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .dpi-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid var(--green-border);
+    transition: background 0.35s, border-color 0.35s, transform 0.2s;
+    flex-shrink: 0;
+  }
+  .dpi-dot.filled {
+    background: var(--green);
+    border-color: var(--green-dark);
+    transform: scale(1.1);
+    box-shadow: 0 0 0 2px var(--green-light);
+  }
+  /* alle bolletjes altijd groen — alleen intensiteit varieert */
+  .dpi-dot.c1.filled { background: #3aaa35; border-color: #2a8a26; }
+  .dpi-dot.c2.filled { background: #3aaa35; border-color: #2a8a26; }
+  .dpi-dot.c3.filled { background: #3aaa35; border-color: #2a8a26; }
+  .dpi-dot.c4.filled { background: #3aaa35; border-color: #2a8a26; }
+  .dpi-dot.c5.filled { background: #3aaa35; border-color: #2a8a26; }
+
+  .dpi-text {
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 16px;
+  }
+  .dpi-sub { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
+
+  .dpi-text.q1 { color: #c0392b; }
+  .dpi-text.q2 { color: #d35400; }
+  .dpi-text.q3 { color: #d4a017; }
+  .dpi-text.q4 { color: #3aaa35; }
+  .dpi-text.q5 { color: #2a8a26; }
+
+  /* rotatie knop */
+  .editor-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn-action {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 7px 14px;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-mid);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .btn-action:hover { border-color: var(--green); color: var(--green); }
+  .btn-action.active { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
+
+
+  .address-section { margin-top: 1rem; }
+  .alt-delivery-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 1rem;
+    margin-bottom: 0;
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-mid);
+  }
+  .toggle-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--line);
+    border-radius: 999px;
+    transition: background 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-track { background: var(--green); }
+  .toggle-thumb {
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    pointer-events: none;
+  }
+  .toggle-switch input:checked ~ .toggle-thumb { transform: translateX(16px); }
+  .alt-address-block {
+    display: none;
+    margin-top: 12px;
+    padding: 14px 16px;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+  }
+  .alt-address-block.visible { display: block; }
+  .alt-address-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 10px;
+    display: block;
+  }
+  .pdf-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f0f0f0;
+    z-index: 5;
+    font-size: 13px;
+    color: var(--ink-muted);
+    gap: 10px;
+  }
+  .pdf-spinner {
+    width: 28px; height: 28px;
+    border: 3px solid var(--line);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  .pdf-page-nav {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+  .pdf-page-nav.visible { display: flex; }
+  .btn-page {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 5px 12px;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-mid);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .btn-page:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+  .btn-page:disabled { opacity: 0.35; cursor: not-allowed; }
+
+
+  /* ── STAPPEN ── */
+  .steps-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 1.75rem;
+  }
+  .step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    position: relative;
+  }
+  /* connector lijn tussen stappen */
+  .step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 18px;
+    left: calc(50% + 18px);
+    right: calc(-50% + 18px);
+    height: 2px;
+    background: var(--line);
+    z-index: 0;
+    transition: background 0.3s;
+  }
+  .step.done:not(:last-child)::after { background: var(--green); }
+  .step-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--line);
+    color: var(--ink-muted);
+    font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.25s;
+    position: relative;
+    z-index: 1;
+  }
+  .step.active .step-num {
+    border-color: var(--green);
+    color: var(--green);
+    background: var(--green-light);
+    box-shadow: 0 0 0 4px var(--green-light);
+  }
+  .step.done .step-num {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+    font-size: 16px;
+  }
+  .step-info { min-width: 0; }
+  .step-label {
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--ink-muted);
+  }
+  .step.active .step-label { color: var(--green); }
+  .step.done   .step-label { color: var(--green-dark); }
+  .step-title {
+    font-size: 12px; font-weight: 600;
+    color: var(--ink-muted);
+  }
+  .step.active .step-title { color: var(--ink); font-weight: 700; }
+  .step.done   .step-title { color: var(--green-dark); }
+
+  /* ── VERHAALBLOK (waarom Buro Extern) ── */
+  .story-block {
+    background: var(--ink);
+    color: #fff;
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    margin-bottom: 2rem;
+  }
+  .story-block h2 {
+    font-size: 1.2rem; font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.75rem;
+    color: #fff;
+  }
+  .story-block p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.72);
+    line-height: 1.65;
+    margin-bottom: 1rem;
+  }
+  .story-usps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .story-usp {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+  }
+  .story-usp-dot {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--green);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #fff; font-weight: 700;
+    margin-top: 1px;
+  }
+  .story-usp strong { display: block; font-weight: 600; color: #fff; margin-bottom: 1px; }
+
+  /* ── GARANTIE BANNER ── */
+  .guarantee-block {
+    border: 2px solid var(--green);
+    background: linear-gradient(135deg, #f0fbf0 0%, #e4f5e3 100%);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    margin-bottom: 1.75rem;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  .guarantee-icon {
+    width: 48px; height: 48px;
+    background: var(--green);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 22px; color: #fff; font-weight: 700;
+  }
+  .guarantee-text strong {
+    display: block;
+    font-size: 15px; font-weight: 800;
+    color: var(--green-dark);
+    margin-bottom: 3px;
+    letter-spacing: -0.01em;
+  }
+  .guarantee-text span { font-size: 13px; color: var(--green-dark); line-height: 1.5; }
+
+
+  /* ── REVIEWS ── */
+  .reviews-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 2rem;
+  }
+  .review-card {
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 14px;
+  }
+  .review-stars { color: #f59e0b; font-size: 13px; margin-bottom: 6px; letter-spacing: 1px; }
+  .review-text { font-size: 12px; color: var(--ink-mid); line-height: 1.55; margin-bottom: 8px; font-style: italic; }
+  .review-author { font-size: 11px; font-weight: 700; color: var(--ink-muted); }
+
+  /* ── FAQ ── */
+  .faq-list { margin-bottom: 2rem; }
+  .faq-item {
+    border-bottom: 1px solid var(--line);
+    padding: 0;
+  }
+  .faq-q {
+    width: 100%; background: none; border: none;
+    padding: 13px 0;
+    font-family: var(--font); font-size: 14px; font-weight: 600;
+    color: var(--ink); text-align: left; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px;
+  }
+  .faq-q:hover { color: var(--green); }
+  .faq-chevron { font-size: 16px; color: var(--ink-muted); transition: transform 0.2s; flex-shrink: 0; }
+  .faq-item.open .faq-chevron { transform: rotate(180deg); }
+  .faq-a {
+    display: none;
+    font-size: 13px; color: var(--ink-mid); line-height: 1.65;
+    padding-bottom: 13px;
+  }
+  .faq-item.open .faq-a { display: block; }
+
+  /* ── ORDER CARD: stap indicator ── */
+  .card-step-hint {
+    font-size: 11px;
+    text-align: center;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 10px;
+  }
+
+  /* responsive extra */
+  @media (max-width: 600px) {
+    .story-usps { grid-template-columns: 1fr; }
+    .reviews-row { grid-template-columns: 1fr; }
+    .steps-bar { flex-direction: column; }
+    .step { border-right: none; border-bottom: 1px solid var(--line); }
+    .step:last-child { border-bottom: none; }
+  }
+
+
+  .qty-direct-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .qty-direct-row {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    height: 34px;
+  }
+  .qty-direct-btn {
+    width: 32px; height: 34px;
+    border: none; background: var(--bg-soft);
+    color: var(--ink); font-size: 18px;
+    cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: background 0.1s; line-height: 1;
+    flex-shrink: 0;
+  }
+  .qty-direct-btn:hover { background: #e5e5e5; }
+  .qty-direct-input {
+    width: 52px; border: none;
+    border-left: 1.5px solid var(--line);
+    border-right: 1.5px solid var(--line);
+    text-align: center;
+    font-family: var(--font); font-size: 14px; font-weight: 700;
+    color: var(--ink); outline: none; background: #fff;
+    padding: 0;
+  }
+  .qty-direct-input::-webkit-inner-spin-button { display: none; }
+
+
+  .btn-action-green {
+    background: var(--green-light) !important;
+    border-color: var(--green) !important;
+    color: var(--green-dark) !important;
+    font-weight: 700 !important;
+  }
+  .btn-action-green:hover { background: var(--green) !important; color: #fff !important; }
+  .btn-action-green.applied {
+    background: var(--green) !important;
+    border-color: var(--green-dark) !important;
+    color: #fff !important;
+  }
+
+  .passend-info {
+    background: var(--green-light);
+    border: 1px solid var(--green-border);
+    border-radius: var(--radius-sm);
+    padding: 9px 13px;
+    font-size: 12px;
+    color: var(--green-dark);
+    display: none;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .passend-info.visible { display: flex; }
+  .passend-info strong { font-weight: 600; }
+
+  @media (max-width: 780px) {
+    main { grid-template-columns: 1fr; gap: 1.5rem; padding: 1.5rem 1rem 4rem; }
+    .col-right { position: static; }
+    .staffel-grid { grid-template-columns: repeat(3, 1fr); }
+    .staffel-item { padding: 9px 4px 8px; }
+    .form-grid-2 { grid-template-columns: 1fr; }
+    .specs-row { grid-template-columns: repeat(2, 1fr); }
+    .nav-links { display: none; }
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="#">
+    <div class="logo-mark">
+      A3
+      <span class="logo-mark-sub">poster</span>
+    </div>
+    <div>
+      <div class="logo-name"><em>A3posters</em>bestellen.nl</div>
+      <div class="logo-powered">Powered by <a href="https://extern.nl" target="_blank">Buro Extern</a></div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="#">Hoe het werkt</a>
+    <a href="#">Kwaliteit</a>
+    <a href="#">Veelgestelde vragen</a>
+  </div>
+  <a class="nav-phone" href="tel:0725670000">072 567 00 00</a>
+</nav>
+
+<div class="banner">
+  Voor <strong>11:00</strong> besteld &rarr; morgen in huis &nbsp;&#183;&nbsp; <strong>Altijd gratis verzending</strong> NL &amp; BE &nbsp;&#183;&nbsp; Tevredenheidsgarantie
+</div>
+
+<main>
+  <div class="col-left">
+    <h1>A3 Posters drukken<br><em>snel, scherp &amp; persoonlijk</em></h1>
+    <p class="page-lead">Upload je ontwerp, kies je aantal en ontvang morgen je posters kreukvrij per koker. Buro Extern regelt de rest — met persoonlijke aandacht en 100% kwaliteitsgarantie.</p>
+
+    <div class="hero-usps">
+      <div class="hero-usp-pill accent"><span class="dot"></span>Altijd gratis verzending</div>
+      <div class="hero-usp-pill accent"><span class="dot"></span>Morgen in huis</div>
+      <div class="hero-usp-pill"><span class="dot"></span>Betaal achteraf op factuur</div>
+      <div class="hero-usp-pill"><span class="dot"></span>Gratis bestandscheck</div>
+      <div class="hero-usp-pill"><span class="dot"></span>Kreukvrij per koker</div>
+    </div>
+
+    <!-- 3 BESTELSTAPPEN -->
+    <div class="steps-bar" id="stepsBar">
+      <div class="step active" id="step1">
+        <div class="step-num">1</div>
+        <div class="step-info">
+          <div class="step-label">Stap 1</div>
+          <div class="step-title">Kies aantal</div>
+        </div>
+      </div>
+      <div class="step" id="step2">
+        <div class="step-num">2</div>
+        <div class="step-info">
+          <div class="step-label">Stap 2</div>
+          <div class="step-title">Upload ontwerp</div>
+        </div>
+      </div>
+      <div class="step" id="step3">
+        <div class="step-num">3</div>
+        <div class="step-info">
+          <div class="step-label">Stap 3</div>
+          <div class="step-title">Vul gegevens in</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GARANTIE -->
+    <div class="guarantee-block">
+      <div class="guarantee-icon">&#10003;</div>
+      <div class="guarantee-text">
+        <strong>100% tevredenheidsgarantie</strong>
+        <span>Niet tevreden over de kwaliteit? Wij drukken opnieuw of betalen je terug. Zonder discussie, altijd.</span>
+
+      </div>
+    </div>
+
+    <div class="staffel-wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <span class="section-label" style="margin-bottom:0">Stap 1 &mdash; Kies je aantal</span>
+        <div class="qty-direct-wrap">
+          <span style="font-size:12px;color:var(--ink-muted);font-weight:500">Of typ exact aantal:</span>
+          <div class="qty-direct-row">
+            <button class="qty-direct-btn" onclick="changeQty(-1)">&#8722;</button>
+            <input class="qty-direct-input" type="number" id="qtyDirect" min="1" max="9999" value="1"
+              oninput="syncQtyFromDirect(this.value)" onchange="syncQtyFromDirect(this.value)">
+            <button class="qty-direct-btn" onclick="changeQty(1)">&#43;</button>
+          </div>
+        </div>
+      </div>
+      <div class="staffel-grid" id="staffelGrid">
+        <div class="staffel-item" data-min="1" data-max="1" data-price="9.75" onclick="selectStaffel(this)">
+          <div class="staffel-qty">1 stuk</div>
+          <div class="staffel-price">€9,75</div>
+          <div class="staffel-per">per stuk</div>
+        </div>
+        <div class="staffel-item" data-min="2" data-max="2" data-price="5.50" onclick="selectStaffel(this)">
+          <div class="staffel-qty">2 stuks</div>
+          <div class="staffel-price">€5,50</div>
+          <div class="staffel-per">per stuk</div>
+        </div>
+        <div class="staffel-item" data-min="3" data-max="4" data-price="4.30" onclick="selectStaffel(this)">
+          <div class="staffel-qty">3 – 4</div>
+          <div class="staffel-price">€4,30</div>
+          <div class="staffel-per">per stuk</div>
+        </div>
+        <div class="staffel-item" data-min="5" data-max="9" data-price="3.30" onclick="selectStaffel(this)">
+          <div class="staffel-qty">5 – 9</div>
+          <div class="staffel-price">€3,30</div>
+          <div class="staffel-per">per stuk</div>
+        </div>
+        <div class="staffel-item" data-min="10" data-max="24" data-price="2.60" onclick="selectStaffel(this)">
+          <div class="staffel-qty">10 – 24</div>
+          <div class="staffel-price">€2,60</div>
+          <div class="staffel-per">per stuk</div>
+        </div>
+        <div class="staffel-item" data-min="25" data-max="49" data-price="1.50" onclick="selectStaffel(this)">
+          <div class="staffel-qty">25 – 49</div>
+          <div class="staffel-price">€1,50</div>
+          <div class="staffel-per">per stuk</div>
+        </div>
+        <div class="staffel-item popular" data-min="50" data-max="99" data-price="1.20" onclick="selectStaffel(this)">
+          <div class="staffel-qty">50 – 99</div>
+          <div class="staffel-price">€1,20</div>
+          <div class="staffel-per">per stuk</div>
+        </div>
+        <div class="staffel-item" data-min="100" data-max="249" data-price="0.81" onclick="selectStaffel(this)">
+          <div class="staffel-qty">100 – 249</div>
+          <div class="staffel-price">€0,81</div>
+          <div class="staffel-per">per stuk</div>
+        </div>
+        <div class="staffel-item" data-min="250" data-max="499" data-price="0.59" onclick="selectStaffel(this)">
+          <div class="staffel-qty">250 – 499</div>
+          <div class="staffel-price">€0,59</div>
+          <div class="staffel-per">per stuk</div>
+        </div>
+        <div class="staffel-item" data-min="500" data-max="9999" data-price="0.47" onclick="selectStaffel(this)">
+          <div class="staffel-qty">500+</div>
+          <div class="staffel-price">€0,47</div>
+          <div class="staffel-per">per stuk</div>
+        </div>
+      </div>
+      <div class="staffel-hint" id="staffelHint"></div>
+    </div>
+
+    <div class="editor-wrap">
+      <span class="section-label">Stap 2 — Upload en controleer je ontwerp</span>
+
+      <!-- Drop zone (verborgen na upload) -->
+      <div class="editor-drop-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp" onchange="handleFile(this.files[0])">
+        <div class="editor-drop-title">Sleep je bestand hierheen of klik om te uploaden</div>
+        <div class="editor-drop-sub">PDF, PNG of JPG — upload je ontwerp direct</div>
+        <div class="editor-drop-tags">
+          <span class="editor-drop-tag">PDF &amp; afbeeldingen</span>
+          <span class="editor-drop-tag">297 × 420 mm (A3)</span>
+          <span class="editor-drop-tag">Max. 50 MB</span>
+        </div>
+      </div>
+
+      <!-- Editor panel (zichtbaar na upload) -->
+      <div class="editor-panel" id="editorPanel">
+
+        <!-- Toolbar -->
+        <div class="editor-toolbar">
+          <div class="editor-filename" id="editorFilename">bestand.png <span>— 0.0 MB</span></div>
+          <div class="editor-actions">
+            <button class="btn-action" id="btnRotate" onclick="rotateImage()">Roteren 90°</button>
+            <button class="btn-action btn-action-green" id="btnFit" onclick="maakPassend()" title="Plaatst je afbeelding op een wit A3-canvas met correcte afmetingen en afloop. De beeldverhouding blijft intact.">Maak A3 passend</button>
+            <button class="btn-action" onclick="resetEditor()">Ander bestand</button>
+          </div>
+        </div>
+
+        <!-- Passend info -->
+        <div class="passend-info" id="passendInfo">
+          <span>&#10003;</span>
+          <span id="passendInfoText">Je afbeelding is passend gemaakt op A3 formaat met witte achtergrond en afloop.</span>
+        </div>
+
+        <!-- A3 Canvas met afloopzone -->
+        <div class="canvas-container" id="canvasContainer">
+          <canvas id="previewCanvas"></canvas>
+          <div class="canvas-placeholder" id="canvasPlaceholder">Afbeelding laden...</div>
+          <div class="pdf-loading" id="pdfLoading" style="display:none">
+            <div class="pdf-spinner"></div>
+            <span>PDF wordt geladen...</span>
+          </div>
+        </div>
+        <div class="pdf-page-nav" id="pdfPageNav">
+          <button class="btn-page" id="btnPrevPage" onclick="changePdfPage(-1)" disabled>&#8592; Vorige</button>
+          <span id="pdfPageLabel">Pagina 1 van 1</span>
+          <button class="btn-page" id="btnNextPage" onclick="changePdfPage(1)" disabled>Volgende &#8594;</button>
+        </div>
+
+        <!-- DPI kwaliteitsmeter -->
+        <div class="dpi-panel">
+          <div class="dpi-header">
+            <div class="dpi-label">Afdrukkwaliteit</div>
+            <div class="dpi-value" id="dpiValue">— dpi</div>
+          </div>
+          <div class="dpi-dots" id="dpiDots">
+            <div class="dpi-dot" id="dot1"></div>
+            <div class="dpi-dot" id="dot2"></div>
+            <div class="dpi-dot" id="dot3"></div>
+            <div class="dpi-dot" id="dot4"></div>
+            <div class="dpi-dot" id="dot5"></div>
+          </div>
+          <div class="dpi-text" id="dpiText">Bestand wordt geanalyseerd...</div>
+          <div class="dpi-sub" id="dpiSub"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="specs-row">
+      <div class="spec-box"><div class="spec-label">Formaat</div><div class="spec-val">297 × 420 mm</div></div>
+      <div class="spec-box"><div class="spec-label">Drukwerk</div><div class="spec-val">Digitaal gedrukt</div></div>
+      <div class="spec-box"><div class="spec-label">Verpakking</div><div class="spec-val">Per koker bezorgd</div></div>
+      <div class="spec-box"><div class="spec-label">Levertijd</div><div class="spec-val">Voor 11:00 = morgen</div></div>
+    </div>
+
+    <div class="form-section">
+      <span class="section-label">Stap 3 — Jouw gegevens</span>
+      <div class="field"><label>Bedrijfsnaam</label><input type="text" id="company" placeholder="Mijn BV"></div>
+      <div class="form-grid-2">
+        <div class="field"><label>Voornaam</label><input type="text" id="firstName" placeholder="Jan"></div>
+        <div class="field"><label>Achternaam</label><input type="text" id="lastName" placeholder="de Vries"></div>
+      </div>
+      <div class="field"><label>E-mailadres</label><input type="email" id="email" placeholder="jan@bedrijf.nl" oninput="updateButton()"></div>
+      <div class="field"><label>Telefoon</label><input type="tel" id="phone" placeholder="06 12 34 56 78"></div>
+
+      <div class="address-section">
+        <span class="section-label" style="margin-top:0.5rem">Bezorgadres</span>
+        <div class="field"><label>Straat en huisnummer</label><input type="text" id="street" placeholder="Hoofdstraat 12"></div>
+        <div class="form-grid-2">
+          <div class="field"><label>Postcode</label><input type="text" id="postcode" placeholder="1234 AB"></div>
+          <div class="field"><label>Plaats</label><input type="text" id="city" placeholder="Amsterdam"></div>
+        </div>
+        <div class="field"><label>Land</label>
+          <select id="country">
+            <option value="NL">Nederland</option>
+            <option value="BE">België</option>
+            <option value="DE">Duitsland</option>
+            <option value="other">Overig</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="alt-delivery-toggle" onclick="toggleAltAddress()">
+        <div class="toggle-switch">
+          <input type="checkbox" id="altToggle">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </div>
+        Afwijkend afleveradres
+      </label>
+
+      <div class="alt-address-block" id="altAddressBlock">
+        <span class="alt-address-label">Afleveradres</span>
+        <div class="field"><label>Bedrijfsnaam / t.a.v.</label><input type="text" id="altCompany" placeholder="Magazijn BV"></div>
+        <div class="field"><label>Straat en huisnummer</label><input type="text" id="altStreet" placeholder="Industrieweg 5"></div>
+        <div class="form-grid-2">
+          <div class="field"><label>Postcode</label><input type="text" id="altPostcode" placeholder="5678 CD"></div>
+          <div class="field"><label>Plaats</label><input type="text" id="altCity" placeholder="Rotterdam"></div>
+        </div>
+        <div class="field"><label>Land</label>
+          <select id="altCountry">
+            <option value="NL">Nederland</option>
+            <option value="BE">België</option>
+            <option value="DE">Duitsland</option>
+            <option value="other">Overig</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:1rem">
+        <label>Opmerkingen <span style="font-weight:400;color:var(--ink-muted)">(optioneel)</span></label>
+        <textarea id="notes" placeholder="Bijzonderheden over je ontwerp of levering..."></textarea>
+      </div>
+      <div class="betaal-achteraf">
+        Betaal eenvoudig nadat wij verzonden hebben &mdash; wij sturen je een factuur per e-mail.
+      </div>
+    </div>
+
+    <!-- VERHAALBLOK -->
+    <div class="story-block">
+      <h2>Waarom A3postersbestellen.nl?</h2>
+      <p>Wij zijn geen anoniem printplatform. Als onderdeel van Buro Extern in Alkmaar staan echte mensen achter elke bestelling — mensen die drukwerk begrijpen en met je meedenken. Besteld voor 11:00? Dan liggen je posters morgen op je deurmat, kreukvrij verpakt in een koker.</p>
+      <div class="story-usps">
+        <div class="story-usp">
+          <div class="story-usp-dot">&#10003;</div>
+          <div><strong>Persoonlijk contact</strong>Bel of mail ons — wij denken mee over formaat, papier en kwaliteit.</div>
+        </div>
+        <div class="story-usp">
+          <div class="story-usp-dot">&#10003;</div>
+          <div><strong>Altijd gratis verzending</strong>Geen verborgen kosten. Prijs op de site is prijs bij checkout.</div>
+        </div>
+        <div class="story-usp">
+          <div class="story-usp-dot">&#10003;</div>
+          <div><strong>Betaal achteraf</strong>Wij sturen factuur na levering. Geen prepayment vereist.</div>
+        </div>
+        <div class="story-usp">
+          <div class="story-usp-dot">&#10003;</div>
+          <div><strong>Bestandscheck inbegrepen</strong>Wij controleren resolutie en afloop vóór het drukken.</div>
+        </div>
+        <div class="story-usp">
+          <div class="story-usp-dot">&#10003;</div>
+          <div><strong>Kreukvrij per koker</strong>Iedere poster wordt zorgvuldig gerold en per koker verstuurd.</div>
+        </div>
+        <div class="story-usp">
+          <div class="story-usp-dot">&#10003;</div>
+          <div><strong>100% tevredenheidsgarantie</strong>Niet goed? Wij drukken opnieuw of je krijgt je geld terug.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVIEWS -->
+    <div class="section-label">Wat klanten zeggen</div>
+    <div class="reviews-row">
+      <div class="review-card">
+        <div class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <div class="review-text">"Snelle levering en de kwaliteit is echt top. Besteld op dinsdag voor 11:00, woensdag al in huis. Zeker herhalen!"</div>
+        <div class="review-author">Marieke V. — Eventbureau Amsterdam</div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <div class="review-text">"Fijn dat je achteraf betaalt en dat ze je bestand checken. Bij een andere drukker had ik een keer een wazig ontwerp, hier niet."</div>
+        <div class="review-author">Tom de B. — Horecaondernemer</div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <div class="review-text">"50 posters voor onze sportvereniging — perfect geprint, geen enkele kreuk. En voor een eerlijke prijs. Aanrader!"</div>
+        <div class="review-author">Sandra K. — Sportvereniging Rotterdam</div>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="section-label">Veelgestelde vragen</div>
+    <div class="faq-list">
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <button class="faq-q">Wat is de uiterste besteltijd voor levering morgen? <span class="faq-chevron">&#8964;</span></button>
+        <div class="faq-a">Bestel je vóór 11:00, dan ontvang je je poster(s) de volgende werkdag. Orders na 11:00 worden de dag erna verwerkt.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <button class="faq-q">In welk formaat moet ik mijn bestand aanleveren? <span class="faq-chevron">&#8964;</span></button>
+        <div class="faq-a">Wij accepteren PDF, PNG, JPG en TIFF. PDF heeft de voorkeur omdat het vectorkwaliteit garandeert. Zorg voor een resolutie van minimaal 150 dpi bij A3-formaat (297 × 420 mm) met 3 mm afloop rondom.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <button class="faq-q">Wanneer betaal ik? <span class="faq-chevron">&#8964;</span></button>
+        <div class="faq-a">Betaal achteraf — wij sturen je een factuur per e-mail zodra je bestelling is verzonden. Betalen kan via iDEAL, creditcard of bankoverschrijving.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <button class="faq-q">Hoe worden de posters verpakt? <span class="faq-chevron">&#8964;</span></button>
+        <div class="faq-a">Iedere poster wordt voorzichtig gerold en in een stevige kartonnen koker geplaatst. Zo komen ze kreukvrij aan, wat het formaat ook is.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <button class="faq-q">Wat als ik niet tevreden ben? <span class="faq-chevron">&#8964;</span></button>
+        <div class="faq-a">Wij staan 100% achter onze kwaliteit. Als je niet tevreden bent, drukken we je bestelling opnieuw of betalen we het volledige bedrag terug — zonder vragen.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <button class="faq-q">Controleren jullie mijn bestand? <span class="faq-chevron">&#8964;</span></button>
+        <div class="faq-a">Ja, altijd. Voor we drukken controleren we je bestand op resolutie, afloop en kleurprofiel. Mocht er iets niet kloppen, nemen we contact met je op.</div>
+      </div>
+    </div>
+
+
+  </div>
+
+  <div class="col-right">
+    <div class="order-card">
+      <div class="card-header">
+        <div class="card-header-label">Jouw bestelling</div>
+        <div class="price-row">
+          <div class="price-big" id="pricePerUnit">€9,75</div>
+          <div class="price-unit">per stuk</div>
+        </div>
+        <div class="price-saving" id="priceSaving"></div>
+      </div>
+      <div class="card-body">
+        <div class="qty-row">
+          <button class="qty-btn" onclick="changeQty(-1)">&#8722;</button>
+          <input class="qty-input" type="number" id="qtyInput" value="1" min="1" max="9999" oninput="onQtyInput(this.value)">
+          <button class="qty-btn" onclick="changeQty(1)">&#43;</button>
+        </div>
+        <div class="card-step-hint" id="cardStepHint">Kies je aantal en upload je ontwerp</div>
+        <div class="next-tier-msg" id="nextTierMsg"></div>
+        <div class="breakdown">
+          <div class="br-row"><span id="breakdownQtyLabel">1 × €9,75</span><span class="val" id="breakdownSubtotal">€9,75</span></div>
+          <div class="br-row"><span>Verzendkosten</span><span class="val" id="breakdownShip" style="color:var(--green);font-weight:600">Gratis</span></div>
+          <div class="br-row"><span>BTW (21%)</span><span class="val" id="breakdownBtw">€2,05</span></div>
+          <div class="br-row total"><span>Totaal incl. BTW</span><span class="val" id="breakdownTotal">€11,80</span></div>
+        </div>
+        <button class="btn-order" id="orderBtn" onclick="submitOrder()" disabled>Bestelling plaatsen</button>
+        <div class="btn-reason" id="btnReason">Upload eerst je ontwerp</div>
+        <div class="trust-list">
+          <div class="trust-item"><div class="trust-check">&#10003;</div>Betaal op rekening, iDEAL of bankoverschrijving</div>
+          <div class="trust-item"><div class="trust-check">&#10003;</div>Orderbevestiging direct per e-mail</div>
+          <div class="trust-item"><div class="trust-check">&#10003;</div>Gratis verzending heel Nederland &amp; België</div>
+          <div class="trust-item"><div class="trust-check">&#10003;</div>Gratis bestandscheck voor het drukken</div>
+          <div class="trust-item"><div class="trust-check">&#10003;</div>Niet goed? Wij drukken opnieuw of geld terug</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="success-overlay" id="successOverlay">
+  <div class="success-modal">
+    <div class="success-badge">&#10003;&nbsp; Order ontvangen</div>
+    <h2>Bedankt voor je bestelling!</h2>
+    <p>Wij controleren je bestand en gaan direct aan de slag. Je ontvangt een bevestiging en de factuur per e-mail.</p>
+    <div class="success-order-box">
+      <div class="order-num" id="successOrderNum">#PS-00000</div>
+      <div class="order-meta">Bevestiging verstuurd naar <strong id="successEmail">jouw e-mail</strong></div>
+    </div>
+    <p style="margin-bottom:1.5rem">Je poster wordt morgen bezorgd per koker. Vragen? Bel <strong>072 567 00 00</strong> of mail <strong>buro@extern.nl</strong>.</p>
+    <button class="btn-new" onclick="closeSuccess()">Nieuwe bestelling plaatsen</button>
+  </div>
+</div>
+
+<script>
+  const tiers = [
+    {min:1,   max:1,    price:9.75},
+    {min:2,   max:2,    price:5.50},
+    {min:3,   max:4,    price:4.30},
+    {min:5,   max:9,    price:3.30},
+    {min:10,  max:24,   price:2.60},
+    {min:25,  max:49,   price:1.50},
+    {min:50,  max:99,   price:1.20},
+    {min:100, max:249,  price:0.81},
+    {min:250, max:499,  price:0.59},
+    {min:500, max:9999, price:0.47},
+  ];
+  let state = {qty:1, file:null, tierIndex:0};
+  const $ = id => document.getElementById(id);
+  const fmt = n => '€' + n.toFixed(2).replace('.',',');
+
+  function getTierIdx(qty) {
+    const i = tiers.findIndex(t => qty>=t.min && qty<=t.max);
+    return i>=0 ? i : tiers.length-1;
+  }
+  function highlightTier() {
+    document.querySelectorAll('.staffel-item').forEach((el,i)=>el.classList.toggle('active',i===state.tierIndex));
+  }
+  function selectStaffel(el) {
+    const min=parseInt(el.dataset.min), max=parseInt(el.dataset.max);
+    state.tierIndex=getTierIdx(min);
+    if(state.qty<min){state.qty=min;$('qtyInput').value=min;}
+    if(state.qty>max&&max<999){state.qty=max;$('qtyInput').value=max;}
+    highlightTier(); updatePrice();
+  }
+  function syncDirectInput() {
+    const el = $('qtyDirect');
+    if(el) el.value = state.qty;
+  }
+  function syncQtyFromDirect(v) {
+    state.qty = Math.max(1, Math.min(9999, parseInt(v)||1));
+    $('qtyInput').value = state.qty;
+    state.tierIndex = getTierIdx(state.qty);
+    highlightTier(); updatePrice();
+  }
+  function changeQty(d) {
+    state.qty=Math.max(1,Math.min(9999,state.qty+d));
+    $('qtyInput').value=state.qty;
+    syncDirectInput();
+    state.tierIndex=getTierIdx(state.qty);
+    highlightTier(); updatePrice();
+  }
+  function onQtyInput(v) {
+    state.qty=Math.max(1,Math.min(9999,parseInt(v)||1));
+    syncDirectInput();
+    state.tierIndex=getTierIdx(state.qty);
+    highlightTier(); updatePrice();
+  }
+  function updatePrice() {
+    const p=tiers[state.tierIndex].price;
+    const sub=p*state.qty;
+    const ship=0; // altijd gratis verzending
+    const exBtw=sub+ship;
+    const btw=exBtw*0.21;
+    const total=exBtw+btw;
+    $('pricePerUnit').textContent=fmt(p);
+    const saved=(tiers[0].price-p)*state.qty;
+    $('priceSaving').textContent=saved>0.01?`Je bespaart ${fmt(saved)} t.o.v. losse prijs`:'';
+    $('breakdownQtyLabel').textContent=`${state.qty} × ${fmt(p)}`;
+    $('breakdownSubtotal').textContent=fmt(sub);
+    $('breakdownShip').textContent=ship===0?'Gratis':fmt(ship);
+    $('breakdownBtw').textContent=fmt(btw);
+    $('breakdownTotal').textContent=fmt(total);
+    const ni=state.tierIndex+1;
+    if(ni<tiers.length){
+      const needed=tiers[ni].min-state.qty;
+      $('nextTierMsg').innerHTML=`Bestel <strong>${needed} meer</strong> en betaal ${fmt(tiers[ni].price)} per stuk`;
+    } else {
+      $('nextTierMsg').textContent='Je zit op de beste prijs';
+    }
+    const pct=Math.round(((tiers[0].price-p)/tiers[0].price)*100);
+    $('staffelHint').textContent=pct>0?`${pct}% korting op de stuksprijs`:'';
+  }
+  // ── EDITOR STATE ──
+  let imgEl = null;
+  let rotation = 0;
+  let pdfDoc = null;
+  let pdfPage = 1;
+  let pdfTotalPages = 1;
+
+  const DPI_LEVELS = [
+    { min:0,   max:72,  dots:1, cls:'q1', label:'Zeer lage kwaliteit', sub:'Afdruk zal waarschijnlijk wazig of gepixeld zijn. Gebruik een hogere resolutie.' },
+    { min:72,  max:100, dots:2, cls:'q2', label:'Lage kwaliteit',       sub:'Matig resultaat. Kleine teksten en details worden niet scherp.' },
+    { min:100, max:150, dots:3, cls:'q3', label:'Voldoende kwaliteit',  sub:'Acceptabel voor grote kleurvlakken. Fijne details kunnen iets zacht zijn.' },
+    { min:150, max:200, dots:4, cls:'q4', label:'Goede kwaliteit',      sub:'Prima voor de meeste toepassingen. Scherpe afdruk verwacht.' },
+    { min:200, max:9999,dots:5, cls:'q5', label:'Uitstekende kwaliteit',sub:'Maximale scherpte. Professioneel drukresultaat gegarandeerd.' },
+  ];
+
+  function calcDpi(w, h) {
+    const longest = Math.max(w, h);
+    return Math.round(longest / 16.535);
+  }
+
+  function updateDpiMeter(dpi) {
+    const level = DPI_LEVELS.find(l => dpi >= l.min && dpi < l.max) || DPI_LEVELS[DPI_LEVELS.length-1];
+    $('dpiValue').textContent = dpi + ' dpi';
+    for(let i=1;i<=5;i++){
+      const dot = $('dot'+i);
+      dot.className = 'dpi-dot';
+      if(i <= level.dots) dot.classList.add('filled', level.cls);
+    }
+    const txt = $('dpiText');
+    txt.className = 'dpi-text ' + level.cls;
+    txt.textContent = level.label;
+    $('dpiSub').textContent = level.sub;
+  }
+
+  function drawCanvas() {
+    if(!imgEl) return;
+    const canvas = $('previewCanvas');
+    const container = $('canvasContainer');
+    const cw = container.clientWidth || 600;
+    const ch = container.clientHeight || 848;
+    canvas.width = cw; canvas.height = ch;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, cw, ch);
+
+    const rotated = rotation === 90 || rotation === 270;
+    const srcW = rotated ? imgEl.naturalHeight : imgEl.naturalWidth;
+    const srcH = rotated ? imgEl.naturalWidth  : imgEl.naturalHeight;
+    const scale = Math.min(cw/srcW, ch/srcH);
+    const dw = srcW*scale, dh = srcH*scale;
+    const dx = (cw-dw)/2, dy = (ch-dh)/2;
+
+    ctx.save();
+    ctx.translate(dx+dw/2, dy+dh/2);
+    ctx.rotate(rotation*Math.PI/180);
+    ctx.drawImage(imgEl, -imgEl.naturalWidth/2*scale, -imgEl.naturalHeight/2*scale,
+                  imgEl.naturalWidth*scale, imgEl.naturalHeight*scale);
+    ctx.restore();
+    $('canvasPlaceholder').style.display = 'none';
+  }
+
+  function rotateImage() {
+    rotation = (rotation+90)%360;
+    if(pdfDoc) { renderPdfPage(pdfPage); return; }
+    drawCanvas();
+    if(imgEl){
+      const rotated = rotation===90||rotation===270;
+      updateDpiMeter(calcDpi(rotated?imgEl.naturalHeight:imgEl.naturalWidth, rotated?imgEl.naturalWidth:imgEl.naturalHeight));
+    }
+    // Passend-staat resetten na rotatie
+    const btn = $('btnFit');
+    if(btn) btn.classList.remove('applied');
+    $('passendInfo').classList.remove('visible');
+  }
+
+  function maakPassend() {
+    if(!imgEl) return;
+
+    // A3 met 3mm afloop aan alle kanten = 303 x 426mm
+    // Bij 200 dpi: 303/25.4*200 ≈ 2386 x 3354 px (werkbaar en snel)
+    const DPI = 200;
+    const MM_TO_PX = DPI / 25.4;
+    const A3_W_MM = 303; // 297 + 2x3mm afloop
+    const A3_H_MM = 426; // 420 + 2x3mm afloop
+    const canvW = Math.round(A3_W_MM * MM_TO_PX); // 2386
+    const canvH = Math.round(A3_H_MM * MM_TO_PX); // 3354
+
+    // Bepaal bronafmetingen (rekening houdend met rotatie)
+    const rotated = rotation === 90 || rotation === 270;
+    const srcW = rotated ? imgEl.naturalHeight : imgEl.naturalWidth;
+    const srcH = rotated ? imgEl.naturalWidth  : imgEl.naturalHeight;
+
+    // Schaal proportioneel zodat afbeelding past binnen het A3 canvas
+    // (met 3mm marge = 6mm totaal binnenruimte: 291 x 414mm)
+    const innerW = Math.round(291 * MM_TO_PX);
+    const innerH = Math.round(414 * MM_TO_PX);
+    const scale  = Math.min(innerW / srcW, innerH / srcH);
+    const dw = Math.round(srcW * scale);
+    const dh = Math.round(srcH * scale);
+    const dx = Math.round((canvW - dw) / 2);
+    const dy = Math.round((canvH - dh) / 2);
+
+    // Teken op offscreen canvas
+    const off = document.createElement('canvas');
+    off.width  = canvW;
+    off.height = canvH;
+    const ctx = off.getContext('2d');
+
+    // Witte achtergrond
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvW, canvH);
+
+    // Afbeelding gecentreerd (met rotatie)
+    ctx.save();
+    ctx.translate(dx + dw/2, dy + dh/2);
+    ctx.rotate(rotation * Math.PI / 180);
+    const drawW = rotated ? dh : dw;
+    const drawH = rotated ? dw : dh;
+    ctx.drawImage(imgEl, -drawW/2, -drawH/2, drawW, drawH);
+    ctx.restore();
+
+    // Maak nieuw Image-element van het resultaat
+    const dataUrl = off.toDataURL('image/png');
+    const newImg = new Image();
+    newImg.onload = () => {
+      imgEl = newImg;
+      rotation = 0; // rotatie is al verwerkt
+
+      // Update preview
+      drawCanvas();
+
+      // Herbereken DPI op basis van het nieuwe canvas
+      updateDpiMeter(calcDpi(canvW, canvH));
+      $('dpiSub').textContent = `Passend gemaakt op A3 (${canvW}×${canvH}px bij ${DPI} dpi). Inclusief 3mm afloop.`;
+
+      // Genereer nieuwe Blob voor state.file
+      off.toBlob(blob => {
+        const origName = state.file ? state.file.name.replace(/\.[^.]+$/, '') : 'ontwerp';
+        state.file = new File([blob], origName + '_a3passend.png', {type: 'image/png'});
+        $('editorFilename').innerHTML = `<strong>${state.file.name}</strong> <span>— ${(state.file.size/1024/1024).toFixed(1)} MB</span>`;
+        updateButton();
+      }, 'image/png');
+
+      // Feedback
+      const btn = $('btnFit');
+      btn.classList.add('applied');
+      btn.textContent = 'A3 passend ✓';
+      const info = $('passendInfo');
+      $('passendInfoText').innerHTML =
+        `Klaar! Je ontwerp staat nu op een wit A3-canvas (${canvW}×${canvH}px, ${DPI} dpi) met 3mm afloop. ` +
+        `De beeldverhouding is intact — witte ruimte is toegevoegd waar nodig.`;
+      info.classList.add('visible');
+    };
+    newImg.src = dataUrl;
+  }
+
+  // ── PDF SUPPORT ────────────────────────────────────────────────────────────
+  async function loadPdf(file) {
+    $('pdfLoading').style.display = 'flex';
+    $('canvasPlaceholder').style.display = 'none';
+
+    // pdf.js worker
+    if(typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    pdfDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+    pdfTotalPages = pdfDoc.numPages;
+    pdfPage = 1;
+    updatePdfNav();
+    await renderPdfPage(1);
+  }
+
+  function updatePdfNav() {
+    const nav = $('pdfPageNav');
+    if(pdfTotalPages > 1) {
+      nav.classList.add('visible');
+      $('pdfPageLabel').textContent = `Pagina ${pdfPage} van ${pdfTotalPages}`;
+      $('btnPrevPage').disabled = pdfPage <= 1;
+      $('btnNextPage').disabled = pdfPage >= pdfTotalPages;
+    } else {
+      nav.classList.remove('visible');
+    }
+  }
+
+  async function changePdfPage(delta) {
+    pdfPage = Math.max(1, Math.min(pdfTotalPages, pdfPage + delta));
+    updatePdfNav();
+    await renderPdfPage(pdfPage);
+  }
+
+  async function renderPdfPage(pageNum) {
+    if(!pdfDoc) return;
+    $('pdfLoading').style.display = 'flex';
+    const page = await pdfDoc.getPage(pageNum);
+
+    // Render op hoge resolutie voor DPI-check
+    const scale = 3.0; // 72 dpi * 3 = 216 dpi render
+    const viewport = page.getViewport({scale, rotation});
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = viewport.width;
+    offscreen.height = viewport.height;
+    const ctx = offscreen.getContext('2d');
+    await page.render({canvasContext: ctx, viewport}).promise;
+
+    // Maak een Image van de offscreen canvas
+    imgEl = new Image();
+    imgEl.onload = () => {
+      $('pdfLoading').style.display = 'none';
+      drawCanvas();
+      // DPI: PDF native 72dpi, maar we schatten op basis van pagina-afmetingen
+      // viewport bij scale=1 geeft puntgrootte, 1pt = 1/72 inch
+      const nativeVP = page.getViewport({scale:1});
+      const pxW = nativeVP.width * (96/72); // browser 96dpi
+      const pxH = nativeVP.height * (96/72);
+      const estimatedDpi = calcDpi(pxW, pxH);
+      // PDF is vectorgebaseerd — altijd uitstekende kwaliteit tenzij embedded rasters
+      updateDpiMeter(Math.max(estimatedDpi, 250));
+      $('dpiSub').textContent = 'PDF-bestand — vectorkwaliteit. Uitstekend voor druk.';
+    };
+    imgEl.src = offscreen.toDataURL('image/png');
+    $('pdfPageLabel').textContent = `Pagina ${pageNum} van ${pdfTotalPages}`;
+  }
+
+  // ── HANDLE FILE ────────────────────────────────────────────────────────────
+  function handleFile(file) {
+    if(!file) return;
+    if(file.size > 100*1024*1024) { alert('Bestand is groter dan 100 MB. Gebruik een kleiner bestand.'); return; }
+    state.file = file;
+    pdfDoc = null; pdfPage = 1; rotation = 0;
+
+    $('uploadZone').style.display = 'none';
+    $('editorPanel').classList.add('visible');
+    $('editorFilename').innerHTML = `<strong>${file.name}</strong> <span>— ${(file.size/1024/1024).toFixed(1)} MB</span>`;
+    $('canvasPlaceholder').style.display = 'flex';
+    $('canvasPlaceholder').textContent = 'Bestand laden...';
+    $('dpiText').textContent = 'Bestand wordt geanalyseerd...';
+    $('dpiSub').textContent = '';
+    $('dpiValue').textContent = '— dpi';
+    for(let i=1;i<=5;i++) $('dot'+i).className = 'dpi-dot';
+    $('pdfPageNav').classList.remove('visible');
+    $('pdfLoading').style.display = 'none';
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+    if(isPdf) {
+      loadPdf(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          imgEl = img;
+          drawCanvas();
+          updateDpiMeter(calcDpi(img.naturalWidth, img.naturalHeight));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+    updateButton();
+  }
+
+  function resetEditor() {
+    state.file = null; imgEl = null; rotation = 0; pdfDoc = null;
+    $('uploadZone').style.display = '';
+    $('editorPanel').classList.remove('visible');
+    $('pdfPageNav').classList.remove('visible');
+    $('fileInput').value = '';
+    updateButton();
+  }
+
+  // ── AFLEVERADRES TOGGLE ────────────────────────────────────────────────────
+  function toggleAltAddress() {
+    const cb = $('altToggle');
+    cb.checked = !cb.checked;
+    $('altAddressBlock').classList.toggle('visible', cb.checked);
+  }
+
+  // drag & drop
+  const zone=$('uploadZone');
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('dragover');});
+  zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
+  zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)handleFile(f);});
+
+  window.addEventListener('resize',()=>{ if(imgEl) setTimeout(drawCanvas,50); });
+  function updateButton() {
+    const hasFile=!!state.file, hasEmail=$('email').value.trim().includes('@');
+    const btn=$('orderBtn'), reason=$('btnReason');
+
+    // Stappen bijwerken
+    const s1=$('step1'), s2=$('step2'), s3=$('step3');
+    const hint=$('cardStepHint');
+    function setStep(el, state) {
+      el.className = 'step ' + state;
+      const num = el.querySelector('.step-num');
+      if(state === 'done') num.innerHTML = '&#10003;';
+      else num.innerHTML = el.dataset.n;
+    }
+    s1.dataset.n='1'; s2.dataset.n='2'; s3.dataset.n='3';
+    if(!hasFile){
+      setStep(s1,'active'); setStep(s2,''); setStep(s3,'');
+      hint&&(hint.textContent='Kies je aantal en upload je ontwerp');
+    } else if(!hasEmail){
+      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'active');
+      hint&&(hint.textContent='Vul je gegevens in om te bestellen');
+    } else {
+      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'done');
+      hint&&(hint.textContent='');
+    }
+
+    if(!hasFile){btn.disabled=true;reason.textContent='Upload eerst je ontwerp (stap 2)';}
+    else if(!hasEmail){btn.disabled=true;reason.textContent='Vul je e-mailadres in (stap 3)';}
+    else{btn.disabled=false;reason.textContent='';}
+  }
+
+  function toggleFaq(item) {
+    const isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));
+    if(!isOpen) item.classList.add('open');
+  }
+  async function submitOrder() {
+    const email=$('email').value.trim();
+    if(!state.file||!email.includes('@'))return;
+    const btn=$('orderBtn');
+    btn.innerHTML='<div class="spinner"></div> Verwerken...';
+    btn.disabled=true;
+    await new Promise(r=>setTimeout(r,2000));
+    const num='#PS-'+Math.floor(10000+Math.random()*90000);
+    $('successOrderNum').textContent=num;
+    $('successEmail').textContent=email;
+    $('successOverlay').classList.add('visible');
+  }
+  function closeSuccess() {
+    $('successOverlay').classList.remove('visible');
+    resetEditor();
+    ['firstName','lastName','email','phone','company','notes'].forEach(id=>$(id).value='');
+    state.qty=1;state.tierIndex=0;$('qtyInput').value=1;
+    highlightTier();updatePrice();updateButton();
+    $('orderBtn').textContent='Bestelling plaatsen';
+  }
+  updatePrice();updateButton();
+</script>
+
+<footer style="border-top:1px solid var(--line);padding:1.5rem 2rem;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--ink-muted);flex-wrap:wrap;gap:0.75rem;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="width:24px;height:24px;background:var(--green);border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;flex-shrink:0;">A3</div>
+    <span>Powered by <a href="https://extern.nl" target="_blank" style="color:var(--green);text-decoration:none;font-weight:600;">Buro Extern</a></span>
+  </div>
+  <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+    <span>Berenkoog 11, 1822 BH Alkmaar</span>
+    <a href="tel:0725670000" style="color:inherit;text-decoration:none;">072 567 00 00</a>
+    <a href="mailto:buro@extern.nl" style="color:inherit;text-decoration:none;">buro@extern.nl</a>
+  </div>
+</footer>
+</body>
+</html>
