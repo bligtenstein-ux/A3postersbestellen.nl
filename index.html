@@ -1159,36 +1159,35 @@
     <div class="staffel-wrap">
 
       <!-- STAP 1: DRUKZIJDE -->
-      <div class="stap-blok actief">
-        <div class="stap-nummer">
-          <div class="stap-badge">1</div>
-          <div>
-            <div class="stap-titel">Kies drukzijde</div>
-            <div class="stap-sub">Enkelzijdig of dubbelzijdig bedrukt?</div>
-          </div>
+      <div class="sectie-header">
+        <div class="sectie-nr">1</div>
+        <div>
+          <div class="sectie-titel">Drukzijde</div>
+          <div class="sectie-omschrijving">Enkelzijdig of dubbelzijdig bedrukt?</div>
         </div>
-        <div class="drukzijde-wrap">
-          <button class="drukzijde-btn active" id="btnEnkelzijdig" onclick="setDrukzijde('enkel')">
-            Enkelzijdig
-            <span class="drukzijde-sub">Bedrukt aan één kant — standaard prijs</span>
-          </button>
-          <button class="drukzijde-btn" id="btnDubbelzijdig" onclick="setDrukzijde('dubbel')">
-            Dubbelzijdig
-            <span class="drukzijde-sub">Bedrukt aan twee kanten — +25%</span>
-          </button>
-        </div>
+      </div>
+      <div class="drukzijde-wrap">
+        <button class="drukzijde-btn active" id="btnEnkelzijdig" onclick="setDrukzijde('enkel')">
+          <span class="drukzijde-check">✓</span>
+          Enkelzijdig
+          <span class="drukzijde-sub">Bedrukt aan één kant — standaard prijs</span>
+        </button>
+        <button class="drukzijde-btn" id="btnDubbelzijdig" onclick="setDrukzijde('dubbel')">
+          <span class="drukzijde-check">✓</span>
+          Dubbelzijdig
+          <span class="drukzijde-sub">Bedrukt aan twee kanten — +25%</span>
+        </button>
       </div>
 
       <!-- STAP 2: AANTAL -->
-      <div class="stap-blok">
-        <div class="stap-nummer">
-          <div class="stap-badge">2</div>
-          <div>
-            <div class="stap-titel">Kies je aantal</div>
-            <div class="stap-sub">Meer stuks = lagere prijs per stuk</div>
-          </div>
+      <div class="sectie-header">
+        <div class="sectie-nr">2</div>
+        <div>
+          <div class="sectie-titel">Kies je aantal</div>
+          <div class="sectie-omschrijving">Meer stuks = lagere prijs per stuk</div>
         </div>
-        <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      </div>
+      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
         <div class="qty-direct-wrap">
           <span style="font-size:12px;color:var(--ink-muted);font-weight:500">Of typ exact aantal:</span>
           <div class="qty-direct-row">
@@ -1252,17 +1251,14 @@
         </div>
       </div>
       <div class="staffel-hint" id="staffelHint"></div>
-      </div><!-- einde stap-blok aantal -->
-    </div><!-- einde staffel-wrap -->
+    </div>
 
     <div class="editor-wrap">
-      <div class="stap-blok" style="margin-bottom:12px;padding-bottom:0;border-bottom:none;">
-        <div class="stap-nummer" style="margin-bottom:0">
-          <div class="stap-badge">3</div>
-          <div>
-            <div class="stap-titel">Upload je ontwerp</div>
-            <div class="stap-sub">PDF, PNG of JPG — wij checken het gratis voor het drukken</div>
-          </div>
+      <div class="sectie-header">
+        <div class="sectie-nr">3</div>
+        <div>
+          <div class="sectie-titel">Upload je ontwerp</div>
+          <div class="sectie-omschrijving">PDF, PNG of JPG — wij checken het gratis voor het drukken</div>
         </div>
       </div>
 
