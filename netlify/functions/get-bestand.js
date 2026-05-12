@@ -1,7 +1,4 @@
-// netlify/functions/get-bestand.js
-// Downloadt een printbestand uit Netlify Blobs — beveiligd
-
-const { getStore } = require('@netlify/blobs');
+const { neon } = require('@neondatabase/serverless');
 
 exports.handler = async (event) => {
   const secret = event.headers['x-admin-secret'] || event.queryStringParameters?.secret;
@@ -9,26 +6,31 @@ exports.handler = async (event) => {
     return { statusCode: 401, body: 'Niet geautoriseerd' };
   }
 
-  const key = event.queryStringParameters?.key;
-  if (!key) return { statusCode: 400, body: 'key verplicht' };
+  const ordernummer = event.queryStringParameters?.ordernummer;
+  if (!ordernummer) return { statusCode: 400, body: 'ordernummer verplicht' };
 
   try {
-    const store = getStore('bestanden');
-    const { data, metadata } = await store.getWithMetadata(key);
-    if (!data) return { statusCode: 404, body: 'Bestand niet gevonden' };
+    const sql = neon(process.env.DATABASE_URL);
+    const rows = await sql`
+      SELECT bestand_data, bestand_naam, bestand_type
+      FROM orders
+      WHERE ordernummer = ${ordernummer}
+    `;
 
-    const buffer = Buffer.from(await data.arrayBuffer());
-    const naam = metadata?.naam || key.split('/').pop();
-    const type = metadata?.type || 'application/octet-stream';
+    if (!rows.length || !rows[0].bestand_data) {
+      return { statusCode: 404, body: 'Bestand niet gevonden' };
+    }
+
+    const { bestand_data, bestand_naam, bestand_type } = rows[0];
 
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': type,
-        'Content-Disposition': `attachment; filename="${naam}"`,
+        'Content-Type': bestand_type || 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="${bestand_naam}"`,
         'Access-Control-Allow-Origin': '*',
       },
-      body: buffer.toString('base64'),
+      body: bestand_data,
       isBase64Encoded: true,
     };
   } catch (err) {
