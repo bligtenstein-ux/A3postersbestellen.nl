@@ -193,10 +193,10 @@
     line-height: 1.3;
   }
   .hero-usp-pill.accent {
-    background: var(--green-light);
-    border-color: var(--green-border);
+    background: #e8f0f8;
+    border-color: #b8cfe8;
   }
-  .hero-usp-pill.accent strong { color: var(--green-dark); }
+  .hero-usp-pill.accent strong { color: #1e3a5f; }
   @media (max-width: 900px) {
     .hero-usps { grid-template-columns: repeat(3, 1fr); }
   }
@@ -906,8 +906,8 @@
 
   /* ── GARANTIE BANNER ── */
   .guarantee-block {
-    border: 2px solid var(--green);
-    background: linear-gradient(135deg, #f0fbf0 0%, #e4f5e3 100%);
+    border: 1.5px solid #c7d2e0;
+    background: #f0f4f8;
     border-radius: var(--radius-lg);
     padding: 18px 20px;
     margin-bottom: 1.75rem;
@@ -917,7 +917,7 @@
   }
   .guarantee-icon {
     width: 48px; height: 48px;
-    background: var(--green);
+    background: #1e3a5f;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
@@ -926,11 +926,11 @@
   .guarantee-text strong {
     display: block;
     font-size: 15px; font-weight: 800;
-    color: var(--green-dark);
+    color: #1e3a5f;
     margin-bottom: 3px;
     letter-spacing: -0.01em;
   }
-  .guarantee-text span { font-size: 13px; color: var(--green-dark); line-height: 1.5; }
+  .guarantee-text span { font-size: 13px; color: #3a5070; line-height: 1.5; }
 
 
   /* ── REVIEWS ── */
@@ -1264,7 +1264,7 @@
           <div class="sectie-omschrijving">Meer stuks = lagere prijs per stuk</div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;justify-content:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
         <div class="qty-direct-wrap">
           <span style="font-size:12px;color:var(--ink-muted);font-weight:500">Of typ exact aantal:</span>
           <div class="qty-direct-row">
@@ -1277,52 +1277,52 @@
       </div>
       <div class="staffel-grid" id="staffelGrid">
         <div class="staffel-item" data-min="1" data-max="1" data-price="9.75" onclick="selectStaffel(this)">
-          <div class="staffel-qty">1 stuk</div>
+          <div class="staffel-qty">1</div>
           <div class="staffel-price">€9,75</div>
           <div class="staffel-per">per stuk</div>
         </div>
-        <div class="staffel-item" data-min="2" data-max="2" data-price="5.50" onclick="selectStaffel(this)">
-          <div class="staffel-qty">2 stuks</div>
+        <div class="staffel-item" data-min="2" data-max="4" data-price="5.50" onclick="selectStaffel(this)">
+          <div class="staffel-qty">2</div>
           <div class="staffel-price">€5,50</div>
           <div class="staffel-per">per stuk</div>
         </div>
-        <div class="staffel-item" data-min="3" data-max="4" data-price="4.30" onclick="selectStaffel(this)">
-          <div class="staffel-qty">3 – 4</div>
+        <div class="staffel-item" data-min="5" data-max="9" data-price="4.30" onclick="selectStaffel(this)">
+          <div class="staffel-qty">5</div>
           <div class="staffel-price">€4,30</div>
           <div class="staffel-per">per stuk</div>
         </div>
-        <div class="staffel-item" data-min="5" data-max="9" data-price="3.30" onclick="selectStaffel(this)">
-          <div class="staffel-qty">5 – 9</div>
+        <div class="staffel-item" data-min="10" data-max="24" data-price="3.30" onclick="selectStaffel(this)">
+          <div class="staffel-qty">10</div>
           <div class="staffel-price">€3,30</div>
           <div class="staffel-per">per stuk</div>
         </div>
-        <div class="staffel-item" data-min="10" data-max="24" data-price="2.60" onclick="selectStaffel(this)">
-          <div class="staffel-qty">10 – 24</div>
+        <div class="staffel-item" data-min="25" data-max="49" data-price="2.60" onclick="selectStaffel(this)">
+          <div class="staffel-qty">25</div>
           <div class="staffel-price">€2,60</div>
           <div class="staffel-per">per stuk</div>
         </div>
-        <div class="staffel-item" data-min="25" data-max="49" data-price="1.50" onclick="selectStaffel(this)">
-          <div class="staffel-qty">25 – 49</div>
+        <div class="staffel-item popular" data-min="50" data-max="99" data-price="1.50" onclick="selectStaffel(this)">
+          <div class="staffel-qty">50</div>
           <div class="staffel-price">€1,50</div>
           <div class="staffel-per">per stuk</div>
         </div>
-        <div class="staffel-item popular" data-min="50" data-max="99" data-price="1.20" onclick="selectStaffel(this)">
-          <div class="staffel-qty">50 – 99</div>
+        <div class="staffel-item" data-min="100" data-max="249" data-price="1.20" onclick="selectStaffel(this)">
+          <div class="staffel-qty">100</div>
           <div class="staffel-price">€1,20</div>
           <div class="staffel-per">per stuk</div>
         </div>
-        <div class="staffel-item" data-min="100" data-max="249" data-price="0.81" onclick="selectStaffel(this)">
-          <div class="staffel-qty">100 – 249</div>
+        <div class="staffel-item" data-min="250" data-max="499" data-price="0.81" onclick="selectStaffel(this)">
+          <div class="staffel-qty">250</div>
           <div class="staffel-price">€0,81</div>
           <div class="staffel-per">per stuk</div>
         </div>
-        <div class="staffel-item" data-min="250" data-max="499" data-price="0.59" onclick="selectStaffel(this)">
-          <div class="staffel-qty">250 – 499</div>
+        <div class="staffel-item" data-min="500" data-max="999" data-price="0.59" onclick="selectStaffel(this)">
+          <div class="staffel-qty">500</div>
           <div class="staffel-price">€0,59</div>
           <div class="staffel-per">per stuk</div>
         </div>
-        <div class="staffel-item" data-min="500" data-max="9999" data-price="0.47" onclick="selectStaffel(this)">
-          <div class="staffel-qty">500+</div>
+        <div class="staffel-item" data-min="1000" data-max="9999" data-price="0.47" onclick="selectStaffel(this)">
+          <div class="staffel-qty">1000+</div>
           <div class="staffel-price">€0,47</div>
           <div class="staffel-per">per stuk</div>
         </div>
@@ -1613,16 +1613,16 @@
 
 <script>
   const tiers = [
-    {min:1,   max:1,    price:9.75},
-    {min:2,   max:2,    price:5.50},
-    {min:3,   max:4,    price:4.30},
-    {min:5,   max:9,    price:3.30},
-    {min:10,  max:24,   price:2.60},
-    {min:25,  max:49,   price:1.50},
-    {min:50,  max:99,   price:1.20},
-    {min:100, max:249,  price:0.81},
-    {min:250, max:499,  price:0.59},
-    {min:500, max:9999, price:0.47},
+    {min:1,    max:1,    price:9.75},
+    {min:2,    max:4,    price:5.50},
+    {min:5,    max:9,    price:4.30},
+    {min:10,   max:24,   price:3.30},
+    {min:25,   max:49,   price:2.60},
+    {min:50,   max:99,   price:1.50},
+    {min:100,  max:249,  price:1.20},
+    {min:250,  max:499,  price:0.81},
+    {min:500,  max:999,  price:0.59},
+    {min:1000, max:9999, price:0.47},
   ];
   let state = {qty:1, file:null, fileAchter:null, tierIndex:0, drukzijde:'enkel'};
   const $ = id => document.getElementById(id);
