@@ -1065,6 +1065,83 @@
     .specs-row { grid-template-columns: repeat(2, 1fr); }
     .nav-links { display: none; }
   }
+
+  /* ── DRUKZIJDE KNOPPEN ── */
+  .drukzijde-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+  .drukzijde-btn {
+    padding: 18px 20px;
+    border: 2px solid #d1d5db;
+    border-radius: 10px;
+    background: #ffffff;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111111;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: left;
+    line-height: 1.4;
+    position: relative;
+    display: block;
+    width: 100%;
+  }
+  .drukzijde-btn:hover {
+    border-color: #3aaa35;
+    background: #eaf7ea;
+  }
+  .drukzijde-btn.active {
+    background: #eaf7ea;
+    border-color: #3aaa35;
+    color: #2a8a26;
+    box-shadow: 0 0 0 3px rgba(58,170,53,0.12);
+  }
+  .drukzijde-check {
+    display: none;
+    position: absolute;
+    top: 14px; right: 14px;
+    width: 22px; height: 22px;
+    background: #3aaa35;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    align-items: center;
+    justify-content: center;
+  }
+  .drukzijde-btn.active .drukzijde-check { display: flex; }
+  .drukzijde-sub {
+    display: block;
+    font-size: 12px;
+    font-weight: 400;
+    color: #767676;
+    margin-top: 5px;
+  }
+  .drukzijde-btn.active .drukzijde-sub { color: #2a8a26; }
+
+  /* ── SECTIE HEADERS ── */
+  .sectie-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .sectie-nr {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: #3aaa35;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .sectie-titel { font-size: 15px; font-weight: 700; color: #111; }
+  .sectie-omschrijving { font-size: 12px; color: #767676; margin-top: 2px; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
