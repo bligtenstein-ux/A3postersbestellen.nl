@@ -1,4 +1,3 @@
-// netlify/functions/get-bestand.js
 const { neon } = require('@neondatabase/serverless');
 
 exports.handler = async (event) => {
