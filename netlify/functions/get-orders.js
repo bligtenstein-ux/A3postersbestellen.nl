@@ -1,7 +1,22 @@
-// netlify/functions/get-orders.js
-// Haalt orders op voor de admin — beveiligd met ADMIN_SECRET header
+const { neon } = require('@neondatabase/serverless');
 
-const { getStore } = require('@netlify/blobs');
+async function getDb() {
+  const sql = neon(process.env.DATABASE_URL);
+  await sql`
+    CREATE TABLE IF NOT EXISTS orders (
+      ordernummer TEXT PRIMARY KEY,
+      klant JSONB,
+      bestelling JSONB,
+      gripp_offerte_id TEXT,
+      bestand_naam TEXT,
+      bestand_data TEXT,
+      bestand_type TEXT,
+      status TEXT DEFAULT 'nieuw',
+      aangemaakt TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  return sql;
+}
 
 exports.handler = async (event) => {
   const headers = {
@@ -12,48 +27,33 @@ exports.handler = async (event) => {
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
 
-  // Beveiliging
   const secret = event.headers['x-admin-secret'] || event.queryStringParameters?.secret;
   if (secret !== process.env.ADMIN_SECRET) {
     return { statusCode: 401, headers, body: JSON.stringify({ error: 'Niet geautoriseerd' }) };
   }
 
   try {
-    const store = getStore('orders');
+    const sql = await getDb();
     const action = event.queryStringParameters?.action || 'list';
 
-    // Enkel order ophalen
-    if (action === 'get') {
-      const nr = event.queryStringParameters?.ordernummer;
-      if (!nr) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ordernummer verplicht' }) };
-      const order = await store.get(nr, { type: 'json' });
-      return { statusCode: 200, headers, body: JSON.stringify({ success: true, order }) };
-    }
-
-    // Status updaten
     if (action === 'update_status' && event.httpMethod === 'POST') {
       const body = JSON.parse(event.body || '{}');
-      const order = await store.get(body.ordernummer, { type: 'json' });
-      if (!order) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Order niet gevonden' }) };
-      order.status = body.status;
-      order.gripp_offerte_id = body.gripp_offerte_id || order.gripp_offerte_id;
-      await store.setJSON(body.ordernummer, order);
+      await sql`
+        UPDATE orders SET
+          status = ${body.status},
+          gripp_offerte_id = COALESCE(${body.gripp_offerte_id || null}, gripp_offerte_id)
+        WHERE ordernummer = ${body.ordernummer}
+      `;
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
     }
 
-    // Lijst van alle orders
-    let index = [];
-    try {
-      index = await store.get('__index__', { type: 'json' }) || [];
-    } catch {}
-
-    const orders = [];
-    for (const nr of index.slice(0, 200)) {
-      try {
-        const order = await store.get(nr, { type: 'json' });
-        if (order) orders.push(order);
-      } catch {}
-    }
+    const orders = await sql`
+      SELECT ordernummer, klant, bestelling, gripp_offerte_id,
+             bestand_naam, bestand_type, status, aangemaakt
+      FROM orders
+      ORDER BY aangemaakt DESC
+      LIMIT 200
+    `;
 
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, orders }) };
 
