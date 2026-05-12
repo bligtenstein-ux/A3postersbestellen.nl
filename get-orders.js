@@ -1,9 +1,7 @@
-// netlify/functions/get-orders.js
 const { neon } = require('@neondatabase/serverless');
 
 async function getDb() {
   const sql = neon(process.env.DATABASE_URL);
-  // Maak tabel aan als die nog niet bestaat
   await sql`
     CREATE TABLE IF NOT EXISTS orders (
       ordernummer TEXT PRIMARY KEY,
@@ -50,7 +48,6 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
     }
 
-    // Lijst — zonder bestand_data (te groot)
     const orders = await sql`
       SELECT ordernummer, klant, bestelling, gripp_offerte_id,
              bestand_url, bestand_naam, bestand_type, status, aangemaakt
