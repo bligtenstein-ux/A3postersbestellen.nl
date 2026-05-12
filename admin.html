@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A3 Posters — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --green:   #3aaa35;
+  --green2:  #2a8a26;
+  --green-dim: rgba(58,170,53,0.10);
+  --text:    #111111;
+  --text2:   #374151;
+  --muted:   #6b7280;
+  --border:  #e5e7eb;
+  --surface: #ffffff;
+  --surface2:#f9fafb;
+  --red:     #dc2626;
+  --red-dim: rgba(220,38,38,0.08);
+  --blue:    #3b82f6;
+  --dark:    #1a1a1a;
+}
+html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--surface2); color: var(--text); font-size: 13px; }
+
+/* ── LOGIN ── */
+.login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--surface2); }
+.login-box { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 360px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+.login-logo { width: 48px; height: 48px; background: var(--green); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; font-weight: 900; margin: 0 auto 20px; }
+.login-box h2 { text-align: center; font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+.login-box p { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 24px; }
+.login-box input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 14px; outline: none; margin-bottom: 12px; }
+.login-box input:focus { border-color: var(--green); }
+.login-box button { width: 100%; padding: 11px; background: var(--green); color: white; border: none; border-radius: 8px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.login-box button:hover { background: var(--green2); }
+
+/* ── LAYOUT ── */
+.app { display: none; min-height: 100vh; }
+.app.visible { display: flex; flex-direction: column; }
+.topbar { background: var(--dark); border-bottom: 3px solid var(--green); height: 54px; display: flex; align-items: center; padding: 0 20px; gap: 12px; position: sticky; top: 0; z-index: 100; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-box { width: 34px; height: 34px; background: var(--green); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: white; }
+.logo-text { font-size: 15px; font-weight: 800; color: white; letter-spacing: -0.3px; }
+.admin-badge { background: rgba(58,170,53,0.18); color: var(--green); border: 1px solid rgba(58,170,53,0.35); border-radius: 4px; padding: 2px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.btn-logout { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.65); padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.btn-logout:hover { background: rgba(255,255,255,0.15); color: white; }
+
+.body { display: flex; flex: 1; }
+.sidebar { width: 210px; background: white; border-right: 1px solid var(--border); padding: 16px 0; flex-shrink: 0; position: sticky; top: 54px; height: calc(100vh - 54px); overflow-y: auto; }
+.nav-label { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; padding: 8px 20px 4px; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 16px; cursor: pointer; color: var(--text2); font-size: 13px; font-weight: 500; transition: all .12s; margin: 1px 8px; border-radius: 8px; }
+.nav-item:hover { background: var(--surface2); }
+.nav-item.active { background: var(--green-dim); color: var(--green); font-weight: 600; }
+.nav-badge { margin-left: auto; background: var(--green); color: white; border-radius: 10px; font-size: 9px; font-weight: 800; padding: 1px 7px; }
+
+.main { flex: 1; padding: 28px; overflow-y: auto; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; }
+.page-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+.stat-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+.stat-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.stat-value { font-size: 28px; font-weight: 800; letter-spacing: -1px; font-family: 'JetBrains Mono', monospace; }
+.stat-value.green { color: var(--green); }
+.stat-value.blue  { color: var(--blue); }
+
+.section { background: white; border: 1px solid var(--border); border-radius: 14px; margin-bottom: 24px; overflow: hidden; }
+.section-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.section-title { font-size: 14px; font-weight: 700; }
+
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th { padding: 10px 16px; text-align: left; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+.tbl td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--surface2); }
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.badge-green  { background: rgba(58,170,53,0.12); color: #2a8a26; }
+.badge-blue   { background: rgba(59,130,246,0.10); color: #1d4ed8; }
+.badge-yellow { background: rgba(217,119,6,0.12);  color: #92400e; }
+.badge-gray   { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+.badge-red    { background: rgba(220,38,38,0.10); color: var(--red); }
+
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 7px; border: none; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap; }
+.btn-green { background: var(--green); color: white; }
+.btn-green:hover { background: var(--green2); }
+.btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--border); }
+.btn-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(220,38,38,0.2); }
+.btn-sm { padding: 4px 9px; font-size: 11px; border-radius: 5px; }
+
+.tab-bar { display: flex; gap: 6px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.tab-item { padding: 5px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: white; color: var(--muted); transition: all .15s; font-family: inherit; }
+.tab-item.active { background: var(--dark); color: white; border-color: transparent; }
+.tab-item.active.nieuw { background: #1d4ed8; }
+.tab-item.active.bevestigd { background: #059669; }
+.tab-item.active.productie { background: #d97706; }
+.tab-item.active.verzonden { background: #7c3aed; }
+.tab-item.active.geleverd { background: var(--green); }
+
+.search-input { padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 12px; outline: none; background: var(--surface2); transition: border-color .15s; }
+.search-input:focus { border-color: var(--green); background: white; }
+
+.view { display: none; }
+.view.active { display: block; }
+
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(58,170,53,0.25); border-top-color: var(--green); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.toast { position: fixed; bottom: 20px; right: 20px; background: var(--dark); color: white; padding: 11px 16px; border-radius: 9px; font-size: 12px; font-weight: 500; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 2000; opacity: 0; transform: translateY(8px); transition: all .2s; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.ok { border-left: 3px solid var(--green); }
+.toast.er { border-left: 3px solid var(--red); }
+
+.mo { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+.mo.open { display: flex; }
+.md { background: white; border-radius: 16px; padding: 28px; width: 440px; max-width: 94vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.md h3 { font-size: 17px; font-weight: 800; margin-bottom: 6px; }
+.md p { font-size: 12px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+.md-field label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 5px; }
+.md-field select { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 13px; outline: none; }
+.md-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+.detail-row { display: none; }
+.detail-cell { padding: 12px 16px; background: #fafafa; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">A3</div>
+    <h2>Admin inloggen</h2>
+    <p>A3postersbestellen.nl — Beheer</p>
+    <input type="password" id="secretInput" placeholder="Admin wachtwoord" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">Inloggen</button>
+    <div id="loginErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-box">A3</div>
+      <div class="logo-text">A3postersbestellen.nl</div>
+      <div class="admin-badge">Admin</div>
+    </div>
+    <div class="topbar-right">
+      <a href="/" class="btn-logout">→ Site</a>
+      <button class="btn-logout" onclick="uitloggen()">Uitloggen</button>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sidebar">
+      <div class="nav-label">Beheer</div>
+      <div class="nav-item active" onclick="showView('dashboard',this)">📊 Dashboard</div>
+      <div class="nav-item" onclick="showView('orders',this)">📦 Orders <span class="nav-badge" id="navOrdersCnt">0</span></div>
+      <div class="nav-item" onclick="showView('bestanden',this)">🖼 Bestanden</div>
+      <div class="nav-label" style="margin-top:12px">Systeem</div>
+      <div class="nav-item" onclick="showView('instellingen',this)">⚙️ Instellingen</div>
+    </div>
+
+    <div class="main">
+
+      <!-- DASHBOARD -->
+      <div class="view active" id="view-dashboard">
+        <div class="page-header">
+          <div><div class="page-title">Dashboard</div><div class="page-sub">Overzicht van alle orders</div></div>
+          <button class="btn btn-green" onclick="laadAlles()">↻ Vernieuwen</button>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-label">Totaal orders</div><div class="stat-value green" id="statOrders">—</div></div>
+          <div class="stat-card"><div class="stat-label">Nieuw</div><div class="stat-value blue" id="statNieuw">—</div></div>
+          <div class="stat-card"><div class="stat-label">Omzet excl. BTW</div><div class="stat-value green" id="statOmzet">—</div></div>
+          <div class="stat-card"><div class="stat-label">Naar Gripp</div><div class="stat-value" id="statGripp">—</div></div>
+        </div>
+        <div class="section">
+          <div class="section-header"><div class="section-title">Recente orders</div><button class="btn btn-ghost btn-sm" onclick="showView('orders',document.querySelector('.nav-item:nth-child(2))'))">Alle orders →</button></div>
+          <table class="tbl"><thead><tr><th>Order #</th><th>Klant</th><th>Aantal</th><th>Totaal</th><th>Gripp</th><th>Status</th><th>Datum</th></tr></thead>
+          <tbody id="recentOrders"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)"><div class="spinner"></div> Laden…</td></tr></tbody></table>
+        </div>
+      </div>
+
+      <!-- ORDERS -->
+      <div class="view" id="view-orders">
+        <div class="page-header">
+          <div><div class="page-title">Orders</div><div class="page-sub" id="ordersSub">Alle bestellingen</div></div>
+          <input class="search-input" id="zoekOrder" placeholder="Zoek op ordernummer of e-mail…" oninput="filterOrders()">
+        </div>
+        <div class="section">
+          <div class="tab-bar">
+            <button class="tab-item active" onclick="setTab('alle',this)">Alle</button>
+            <button class="tab-item nieuw" onclick="setTab('nieuw',this)">● Nieuw</button>
+            <button class="tab-item bevestigd" onclick="setTab('bevestigd',this)">✓ Bevestigd</button>
+            <button class="tab-item productie" onclick="setTab('in_productie',this)">⚙ In productie</button>
+            <button class="tab-item verzonden" onclick="setTab('verzonden',this)">↑ Verzonden</button>
+            <button class="tab-item geleverd" onclick="setTab('geleverd',this)">★ Geleverd</button>
+          </div>
+          <table class="tbl">
+            <thead><tr><th>Order #</th><th>Klant</th><th>Aantal</th><th>Totaal excl. BTW</th><th>Bestand</th><th>Gripp</th><th>Status</th><th>Datum</th><th>Acties</th></tr></thead>
+            <tbody id="ordersLijst"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted)"><div class="spinner"></div> Laden…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- BESTANDEN -->
+      <div class="view" id="view-bestanden">
+        <div class="page-header">
+          <div><div class="page-title">Bestanden</div><div class="page-sub">Alle geüploade printbestanden</div></div>
+        </div>
+        <div class="section">
+          <table class="tbl">
+            <thead><tr><th>Bestand</th><th>Order #</th><th>Klant</th><th>Datum</th><th>Actie</th></tr></thead>
+            <tbody id="bestandenLijst"><tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Laden…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- INSTELLINGEN -->
+      <div class="view" id="view-instellingen">
+        <div class="page-header"><div><div class="page-title">Instellingen</div><div class="page-sub">Gripp koppeling testen</div></div></div>
+        <div class="section" style="padding:24px">
+          <div class="section-title" style="margin-bottom:8px">Gripp verbinding testen</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Controleert of alle Gripp producten gevonden worden.</p>
+          <button class="btn btn-green" onclick="testGripp()" id="btnTestGripp">🔍 Verbinding testen</button>
+          <div id="grippTestResult" style="margin-top:16px;font-size:12px;font-family:'JetBrains Mono',monospace;line-height:1.8"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- STATUS MODAL -->
+<div class="mo" id="moStatus">
+  <div class="md">
+    <h3>Status wijzigen</h3>
+    <p>Wijzig de status van order <strong id="moOrderNr"></strong>.</p>
+    <div class="md-field"><label>Nieuwe status</label>
+      <select id="moNieuweStatus">
+        <option value="nieuw">Nieuw</option>
+        <option value="bevestigd">Bevestigd</option>
+        <option value="in_productie">In productie</option>
+        <option value="verzonden">Verzonden</option>
+        <option value="geleverd">Geleverd</option>
+        <option value="geannuleerd">Geannuleerd</option>
+      </select>
+    </div>
+    <input type="hidden" id="moOrderNrVal">
+    <div class="md-actions">
+      <button class="btn btn-ghost" onclick="sluitModal()">Annuleren</button>
+      <button class="btn btn-green" onclick="slaStatusOp()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let adminSecret = '';
+let alleOrders = [];
+let huidigTab = 'alle';
+
+// ── LOGIN ─────────────────────────────────────────────────────
+async function login() {
+  const secret = $('secretInput').value.trim();
+  if (!secret) return;
+  // Test of secret klopt door een API call te doen
+  const resp = await fetch('/.netlify/functions/get-orders?action=list', {
+    headers: { 'X-Admin-Secret': secret }
+  });
+  if (resp.status === 401) {
+    $('loginErr').textContent = 'Onjuist wachtwoord';
+    return;
+  }
+  adminSecret = secret;
+  sessionStorage.setItem('admin_secret', secret);
+  $('loginScreen').style.display = 'none';
+  $('app').classList.add('visible');
+  laadAlles();
+}
+
+function uitloggen() {
+  sessionStorage.removeItem('admin_secret');
+  location.reload();
+}
+
+// Auto-login als secret in sessie zit
+window.addEventListener('load', () => {
+  const saved = sessionStorage.getItem('admin_secret');
+  if (saved) { $('secretInput').value = saved; login(); }
+});
+
+// ── DATA ──────────────────────────────────────────────────────
+async function apiFetch(path) {
+  const resp = await fetch(path, { headers: { 'X-Admin-Secret': adminSecret } });
+  return resp.json();
+}
+
+async function laadAlles() {
+  const data = await apiFetch('/.netlify/functions/get-orders?action=list');
+  alleOrders = data.orders || [];
+  $('navOrdersCnt').textContent = alleOrders.length;
+  vulDashboard();
+  renderOrders();
+  renderBestanden();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+function vulDashboard() {
+  $('statOrders').textContent = alleOrders.length;
+  $('statNieuw').textContent  = alleOrders.filter(o => o.status === 'nieuw').length;
+  $('statGripp').textContent  = alleOrders.filter(o => o.gripp_offerte_id).length + '/' + alleOrders.length;
+
+  const omzet = alleOrders.reduce((s, o) => {
+    const p = parseFloat(o.bestelling?.prijs_per_stuk || 0);
+    const n = parseInt(o.bestelling?.aantal || 0);
+    return s + p * n;
+  }, 0);
+  $('statOmzet').textContent = '€ ' + omzet.toFixed(2).replace('.', ',');
+
+  $('recentOrders').innerHTML = alleOrders.slice(0, 10).map(o => `
+    <tr>
+      <td class="mono">${o.ordernummer}</td>
+      <td>${o.klant?.email || '—'}<br><span style="font-size:10px;color:var(--muted)">${o.klant?.bedrijf || ''}</span></td>
+      <td>${o.bestelling?.aantal || '—'}</td>
+      <td class="mono">€ ${((o.bestelling?.prijs_per_stuk||0) * (o.bestelling?.aantal||0)).toFixed(2).replace('.',',')}</td>
+      <td>${o.gripp_offerte_id ? `<span class="badge badge-green">✓ #${o.gripp_offerte_id}</span>` : '<span class="badge badge-gray">—</span>'}</td>
+      <td>${statusBadge(o.status)}</td>
+      <td>${datumFmt(o.aangemaakt)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Nog geen orders</td></tr>';
+}
+
+// ── ORDERS ────────────────────────────────────────────────────
+function renderOrders() {
+  const zoek = ($('zoekOrder')?.value || '').toLowerCase();
+  let lijst = alleOrders;
+  if (huidigTab !== 'alle') lijst = lijst.filter(o => o.status === huidigTab);
+  if (zoek) lijst = lijst.filter(o =>
+    (o.ordernummer||'').toLowerCase().includes(zoek) ||
+    (o.klant?.email||'').toLowerCase().includes(zoek) ||
+    (o.klant?.bedrijf||'').toLowerCase().includes(zoek)
+  );
+
+  $('ordersSub').textContent = `${lijst.length} order${lijst.length !== 1 ? 's' : ''}`;
+
+  $('ordersLijst').innerHTML = lijst.map(o => {
+    const totaal = ((o.bestelling?.prijs_per_stuk||0) * (o.bestelling?.aantal||0));
+    return `<tr style="cursor:pointer" onclick="toggleDetail('${o.ordernummer}')">
+      <td class="mono" style="font-weight:600">${o.ordernummer}</td>
+      <td>
+        <div>${o.klant?.naam || '—'}</div>
+        <div style="font-size:10px;color:var(--muted)">${o.klant?.email || ''}</div>
+        ${o.klant?.bedrijf ? `<div style="font-size:10px;color:var(--muted)">${o.klant.bedrijf}</div>` : ''}
+      </td>
+      <td>${o.bestelling?.aantal || '—'} st.</td>
+      <td class="mono">€ ${totaal.toFixed(2).replace('.',',')}</td>
+      <td>${o.bestand_naam
+        ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();downloadBestand('${o.bestand_url}','${o.bestand_naam}')">⬇ ${o.bestand_naam.substring(0,20)}${o.bestand_naam.length>20?'…':''}</button>`
+        : '<span style="color:var(--muted);font-size:11px">Geen bestand</span>'}</td>
+      <td>${o.gripp_offerte_id
+        ? `<span class="badge badge-green">✓ #${o.gripp_offerte_id}</span>`
+        : `<button class="btn btn-sm btn-green" onclick="event.stopPropagation();stuurNaarGripp('${o.ordernummer}')">→ Gripp</button>`}</td>
+      <td>${statusBadge(o.status)}</td>
+      <td style="font-size:11px">${datumFmt(o.aangemaakt)}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-ghost btn-sm" onclick="openStatusModal('${o.ordernummer}','${o.status}')">Status →</button>
+      </td>
+    </tr>
+    <tr class="detail-row" id="detail-${o.ordernummer}">
+      <td colspan="9" class="detail-cell">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Klantgegevens</div>
+            <div>${o.klant?.naam || '—'}</div>
+            <div>${o.klant?.email || ''}</div>
+            <div>${o.klant?.telefoon || ''}</div>
+            <div>${o.klant?.bedrijf || ''}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Bestelling</div>
+            <div>${o.bestelling?.aantal} × A3 poster</div>
+            <div>€ ${(o.bestelling?.prijs_per_stuk||0).toFixed(2).replace('.',',')} per stuk</div>
+            <div>Verzending: ${o.bestelling?.verzendmethode || '—'}</div>
+            ${o.bestelling?.opmerkingen ? `<div style="margin-top:4px;color:var(--muted)">Opmerking: ${o.bestelling.opmerkingen}</div>` : ''}
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Systeem</div>
+            <div>Aangemaakt: ${datumFmt(o.aangemaakt)}</div>
+            ${o.gripp_offerte_id ? `<div>Gripp offerte: #${o.gripp_offerte_id}</div>` : '<div style="color:var(--muted)">Nog niet naar Gripp</div>'}
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted)">Geen orders gevonden</td></tr>';
+}
+
+function toggleDetail(nr) {
+  const row = $('detail-' + nr);
+  if (row) row.style.display = row.style.display === 'table-row' ? 'none' : 'table-row';
+}
+
+function filterOrders() { renderOrders(); }
+function setTab(tab, el) {
+  huidigTab = tab;
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderOrders();
+}
+
+// ── BESTANDEN ─────────────────────────────────────────────────
+function renderBestanden() {
+  const metBestand = alleOrders.filter(o => o.bestand_url);
+  $('bestandenLijst').innerHTML = metBestand.map(o => `
+    <tr>
+      <td>
+        <div style="font-weight:600;font-family:'JetBrains Mono',monospace;font-size:11px">${o.bestand_naam}</div>
+      </td>
+      <td class="mono">${o.ordernummer}</td>
+      <td>
+        <div>${o.klant?.naam || '—'}</div>
+        <div style="font-size:10px;color:var(--muted)">${o.klant?.email || ''}</div>
+      </td>
+      <td style="font-size:11px">${datumFmt(o.aangemaakt)}</td>
+      <td><button class="btn btn-green btn-sm" onclick="downloadBestand('${o.bestand_url}','${o.bestand_naam}')">⬇ Download</button></td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Nog geen bestanden opgeslagen</td></tr>';
+}
+
+// ── DOWNLOAD BESTAND ──────────────────────────────────────────
+async function downloadBestand(key, naam) {
+  showToast('Bestand downloaden…');
+  try {
+    const resp = await fetch(`/.netlify/functions/get-bestand?key=${encodeURIComponent(key)}&secret=${encodeURIComponent(adminSecret)}`);
+    if (!resp.ok) throw new Error('Download mislukt');
+    const blob = await resp.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = naam;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    showToast('✓ ' + naam + ' gedownload', 'ok');
+  } catch(e) { showToast('Download mislukt: ' + e.message, 'er'); }
+}
+
+// ── GRIPP ─────────────────────────────────────────────────────
+async function stuurNaarGripp(ordernummer) {
+  showToast(`⏳ ${ordernummer} naar Gripp sturen…`);
+  const order = alleOrders.find(o => o.ordernummer === ordernummer);
+  if (!order) return;
+
+  try {
+    const resp = await fetch('/.netlify/functions/gripp-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ klant: order.klant, bestelling: order.bestelling }),
+    });
+    const data = await resp.json();
+    if (data.success) {
+      // Sla gripp_offerte_id op
+      await fetch('/.netlify/functions/get-orders?action=update_status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': adminSecret },
+        body: JSON.stringify({ ordernummer, status: order.status, gripp_offerte_id: data.gripp_offerte_id }),
+      });
+      showToast(`✓ Gripp offerte #${data.gripp_offerte_id} aangemaakt`, 'ok');
+      await laadAlles();
+    } else {
+      showToast('Gripp fout: ' + data.error, 'er');
+    }
+  } catch(e) { showToast('Verbindingsfout: ' + e.message, 'er'); }
+}
+
+async function testGripp() {
+  const btn = $('btnTestGripp');
+  btn.disabled = true; btn.textContent = '⏳ Testen…';
+  try {
+    const resp = await fetch('/.netlify/functions/gripp-order', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ test: true }),
+    });
+    const data = await resp.json();
+    let html = data.alleGevonden
+      ? '<div style="color:var(--green);font-weight:700;margin-bottom:8px">✓ Alle producten gevonden</div>'
+      : '<div style="color:var(--red);font-weight:700;margin-bottom:8px">✗ Niet alle producten gevonden</div>';
+    for (const [key, p] of Object.entries(data.producten || {})) {
+      html += `<div>${p.gevonden ? '✓' : '✗'} ${key}: ${p.naam} ${p.gevonden ? `(id=${p.gripp_id})` : '← NIET GEVONDEN'}</div>`;
+    }
+    $('grippTestResult').innerHTML = html;
+  } catch(e) { $('grippTestResult').textContent = 'Fout: ' + e.message; }
+  btn.disabled = false; btn.textContent = '🔍 Verbinding testen';
+}
+
+// ── STATUS MODAL ──────────────────────────────────────────────
+function openStatusModal(nr, status) {
+  $('moOrderNr').textContent = nr;
+  $('moOrderNrVal').value = nr;
+  $('moNieuweStatus').value = status;
+  $('moStatus').classList.add('open');
+}
+
+async function slaStatusOp() {
+  const nr     = $('moOrderNrVal').value;
+  const status = $('moNieuweStatus').value;
+  await fetch('/.netlify/functions/get-orders?action=update_status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': adminSecret },
+    body: JSON.stringify({ ordernummer: nr, status }),
+  });
+  sluitModal();
+  showToast('Status bijgewerkt', 'ok');
+  await laadAlles();
+}
+
+function sluitModal() { $('moStatus').classList.remove('open'); }
+document.querySelectorAll('.mo').forEach(m => m.addEventListener('click', e => { if(e.target===m) sluitModal(); }));
+
+// ── NAVIGATIE ─────────────────────────────────────────────────
+function showView(naam, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  $('view-' + naam)?.classList.add('active');
+  if (el) el.classList.add('active');
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function datumFmt(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('nl-NL', { day:'2-digit', month:'2-digit', year:'numeric' }) + ' ' +
+         dt.toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit' });
+}
+
+function statusBadge(s) {
+  const map = {
+    nieuw:       ['badge-blue',   'Nieuw'],
+    bevestigd:   ['badge-green',  'Bevestigd'],
+    in_productie:['badge-yellow', 'In productie'],
+    verzonden:   ['badge-blue',   'Verzonden'],
+    geleverd:    ['badge-green',  'Geleverd'],
+    geannuleerd: ['badge-red',    'Geannuleerd'],
+  };
+  const [cls, label] = map[s] || ['badge-gray', s || '—'];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+let toastTimer;
+function showToast(msg, type = 'ok') {
+  const t = $('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>

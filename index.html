@@ -1853,12 +1853,12 @@
     if(!isOpen) item.classList.add('open');
   }
   async function submitOrder() {
-    const email    = $('email').value.trim();
-    const firstName= $('firstName').value.trim();
-    const lastName = $('lastName').value.trim();
-    const company  = $('company')?.value.trim() || '';
-    const phone    = $('phone')?.value.trim()   || '';
-    const notes    = $('notes')?.value.trim()   || '';
+    const email     = $('email').value.trim();
+    const firstName = $('firstName').value.trim();
+    const lastName  = $('lastName').value.trim();
+    const company   = $('company')?.value.trim() || '';
+    const phone     = $('phone')?.value.trim()   || '';
+    const notes     = $('notes')?.value.trim()   || '';
 
     if (!state.file || !email.includes('@')) return;
 
@@ -1866,48 +1866,69 @@
     btn.innerHTML = '<div class="spinner"></div> Bestelling verwerken...';
     btn.disabled = true;
 
-    const ordernummer = 'PS-' + Math.floor(10000 + Math.random() * 90000);
+    const ordernummer  = 'PS-' + Math.floor(10000 + Math.random() * 90000);
     const prijsPerStuk = tiers[state.tierIndex].price;
 
-    const payload = {
-      klant: {
-        email,
-        naam:     (firstName + ' ' + lastName).trim(),
-        bedrijf:  company,
-        telefoon: phone,
-        land:     'Nederland',
-      },
-      bestelling: {
-        ordernummer,
-        aantal:          state.qty,
-        prijs_per_stuk:  prijsPerStuk,
-        verzendmethode:  'verzenden',
-        verzendkosten:   0,
-        verzendland:     'NL',
-        bestandsnaam:    state.file.name,
-        opmerkingen:     notes,
-      },
+    const klant = {
+      email,
+      naam:     (firstName + ' ' + lastName).trim(),
+      bedrijf:  company,
+      telefoon: phone,
+      land:     'Nederland',
+    };
+
+    const bestelling = {
+      ordernummer,
+      aantal:         state.qty,
+      prijs_per_stuk: prijsPerStuk,
+      verzendmethode: 'verzenden',
+      verzendkosten:  0,
+      verzendland:    'NL',
+      bestandsnaam:   state.file.name,
+      opmerkingen:    notes,
     };
 
     try {
-      const resp = await fetch('/.netlify/functions/gripp-order', {
+      // Stap 1: bestand als base64 lezen
+      btn.innerHTML = '<div class="spinner"></div> Bestand uploaden...';
+      const bestandBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = e => resolve(e.target.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(state.file);
+      });
+
+      // Stap 2: order naar Gripp sturen
+      btn.innerHTML = '<div class="spinner"></div> Order verwerken...';
+      const grippResp = await fetch('/.netlify/functions/gripp-order', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload),
+        body:    JSON.stringify({ klant, bestelling }),
       });
-      const data = await resp.json();
+      const grippData = await grippResp.json();
 
-      if (data.success) {
-        $('successOrderNum').textContent = '#' + ordernummer;
-        $('successEmail').textContent    = email;
-        $('successOverlay').classList.add('visible');
-      } else {
-        alert('Er is iets misgegaan bij het verwerken van je bestelling.\nProbeer het opnieuw of bel 072 567 00 00.\n\n(' + (data.error || 'onbekende fout') + ')');
-        btn.innerHTML = 'Bestelling plaatsen';
-        btn.disabled  = false;
-      }
+      // Stap 3: order + bestand opslaan in admin
+      await fetch('/.netlify/functions/save-order', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          ordernummer,
+          klant,
+          bestelling,
+          gripp_offerte_id: grippData.gripp_offerte_id || null,
+          bestand_data: bestandBase64,
+          bestand_naam: state.file.name,
+          bestand_type: state.file.type,
+        }),
+      });
+
+      // Stap 4: bevestiging tonen (ook als Gripp fout had)
+      $('successOrderNum').textContent = '#' + ordernummer;
+      $('successEmail').textContent    = email;
+      $('successOverlay').classList.add('visible');
+
     } catch (e) {
-      alert('Verbindingsfout. Controleer je internet en probeer opnieuw.');
+      alert('Er is iets misgegaan. Probeer opnieuw of bel 072 567 00 00.');
       btn.innerHTML = 'Bestelling plaatsen';
       btn.disabled  = false;
     }

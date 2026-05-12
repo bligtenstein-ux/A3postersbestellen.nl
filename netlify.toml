@@ -1,6 +1,7 @@
 [build]
   functions = "netlify/functions"
   publish   = "."
+  command   = "npm install"
 
 # CORS headers voor de API
 [[headers]]
