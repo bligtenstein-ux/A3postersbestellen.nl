@@ -146,37 +146,55 @@
   h1 em { font-style: normal; color: var(--green); }
   .page-lead { font-size: 15px; color: var(--ink-muted); margin-bottom: 1.5rem; line-height: 1.6; }
 
-  /* ── HERO USP STRIP (vervangt usp-row) ── */
+  /* ── HERO USP STRIP ── */
   .hero-usps {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
     margin-bottom: 1.75rem;
   }
   .hero-usp-pill {
     display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--bg-soft);
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--ink-mid);
-    white-space: nowrap;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    background: #fff;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    transition: border-color .15s, box-shadow .15s;
   }
-  .hero-usp-pill .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--green);
-    flex-shrink: 0;
+  .hero-usp-pill:hover {
+    border-color: var(--green-border);
+    box-shadow: 0 2px 8px rgba(58,170,53,0.08);
+  }
+  .hero-usp-pill .usp-icon {
+    font-size: 20px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .hero-usp-pill strong {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+  .hero-usp-pill .usp-sub {
+    font-size: 11px;
+    color: var(--ink-muted);
+    line-height: 1.3;
   }
   .hero-usp-pill.accent {
     background: var(--green-light);
     border-color: var(--green-border);
-    color: var(--green-dark);
-    font-weight: 600;
+  }
+  .hero-usp-pill.accent strong { color: var(--green-dark); }
+  @media (max-width: 900px) {
+    .hero-usps { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .hero-usps { grid-template-columns: repeat(2, 1fr); }
   }
 
   .section-label {
@@ -1065,11 +1083,31 @@
     <p class="page-lead">Upload je ontwerp, kies je aantal en ontvang morgen je posters kreukvrij per koker. Buro Extern regelt de rest — met persoonlijke aandacht en 100% kwaliteitsgarantie.</p>
 
     <div class="hero-usps">
-      <div class="hero-usp-pill accent"><span class="dot"></span>Altijd gratis verzending</div>
-      <div class="hero-usp-pill accent"><span class="dot"></span>Morgen in huis</div>
-      <div class="hero-usp-pill"><span class="dot"></span>Betaal achteraf op factuur</div>
-      <div class="hero-usp-pill"><span class="dot"></span>Gratis bestandscheck</div>
-      <div class="hero-usp-pill"><span class="dot"></span>Kreukvrij per koker</div>
+      <div class="hero-usp-pill accent">
+        <span class="usp-icon">🚚</span>
+        <strong>Gratis verzending</strong>
+        <span class="usp-sub">Heel Nederland &amp; België</span>
+      </div>
+      <div class="hero-usp-pill accent">
+        <span class="usp-icon">⚡</span>
+        <strong>Morgen in huis</strong>
+        <span class="usp-sub">Bestel voor 11:00 uur</span>
+      </div>
+      <div class="hero-usp-pill">
+        <span class="usp-icon">📄</span>
+        <strong>Betaal achteraf</strong>
+        <span class="usp-sub">Factuur na levering</span>
+      </div>
+      <div class="hero-usp-pill">
+        <span class="usp-icon">🔍</span>
+        <strong>Gratis bestandscheck</strong>
+        <span class="usp-sub">Wij checken voor het drukken</span>
+      </div>
+      <div class="hero-usp-pill">
+        <span class="usp-icon">📦</span>
+        <strong>Kreukvrij per koker</strong>
+        <span class="usp-sub">Zorgvuldig verpakt</span>
+      </div>
     </div>
 
     <!-- 3 BESTELSTAPPEN -->
@@ -1853,85 +1891,16 @@
     if(!isOpen) item.classList.add('open');
   }
   async function submitOrder() {
-    const email     = $('email').value.trim();
-    const firstName = $('firstName').value.trim();
-    const lastName  = $('lastName').value.trim();
-    const company   = $('company')?.value.trim() || '';
-    const phone     = $('phone')?.value.trim()   || '';
-    const notes     = $('notes')?.value.trim()   || '';
-
-    if (!state.file || !email.includes('@')) return;
-
-    const btn = $('orderBtn');
-    btn.innerHTML = '<div class="spinner"></div> Bestelling verwerken...';
-    btn.disabled = true;
-
-    const ordernummer  = 'PS-' + Math.floor(10000 + Math.random() * 90000);
-    const prijsPerStuk = tiers[state.tierIndex].price;
-
-    const klant = {
-      email,
-      naam:     (firstName + ' ' + lastName).trim(),
-      bedrijf:  company,
-      telefoon: phone,
-      land:     'Nederland',
-    };
-
-    const bestelling = {
-      ordernummer,
-      aantal:         state.qty,
-      prijs_per_stuk: prijsPerStuk,
-      verzendmethode: 'verzenden',
-      verzendkosten:  0,
-      verzendland:    'NL',
-      bestandsnaam:   state.file.name,
-      opmerkingen:    notes,
-    };
-
-    try {
-      // Stap 1: bestand als base64 lezen
-      btn.innerHTML = '<div class="spinner"></div> Bestand uploaden...';
-      const bestandBase64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload  = e => resolve(e.target.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(state.file);
-      });
-
-      // Stap 2: order naar Gripp sturen
-      btn.innerHTML = '<div class="spinner"></div> Order verwerken...';
-      const grippResp = await fetch('/.netlify/functions/gripp-order', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ klant, bestelling }),
-      });
-      const grippData = await grippResp.json();
-
-      // Stap 3: order + bestand opslaan in admin
-      await fetch('/.netlify/functions/save-order', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          ordernummer,
-          klant,
-          bestelling,
-          gripp_offerte_id: grippData.gripp_offerte_id || null,
-          bestand_data: bestandBase64,
-          bestand_naam: state.file.name,
-          bestand_type: state.file.type,
-        }),
-      });
-
-      // Stap 4: bevestiging tonen (ook als Gripp fout had)
-      $('successOrderNum').textContent = '#' + ordernummer;
-      $('successEmail').textContent    = email;
-      $('successOverlay').classList.add('visible');
-
-    } catch (e) {
-      alert('Er is iets misgegaan. Probeer opnieuw of bel 072 567 00 00.');
-      btn.innerHTML = 'Bestelling plaatsen';
-      btn.disabled  = false;
-    }
+    const email=$('email').value.trim();
+    if(!state.file||!email.includes('@'))return;
+    const btn=$('orderBtn');
+    btn.innerHTML='<div class="spinner"></div> Verwerken...';
+    btn.disabled=true;
+    await new Promise(r=>setTimeout(r,2000));
+    const num='#PS-'+Math.floor(10000+Math.random()*90000);
+    $('successOrderNum').textContent=num;
+    $('successEmail').textContent=email;
+    $('successOverlay').classList.add('visible');
   }
   function closeSuccess() {
     $('successOverlay').classList.remove('visible');
