@@ -364,7 +364,7 @@ function renderOrders() {
       <td>${o.bestelling?.aantal || '—'} st.</td>
       <td class="mono">€ ${totaal.toFixed(2).replace('.',',')}</td>
       <td>${o.bestand_naam
-        ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();downloadBestand('${o.bestand_url}','${o.bestand_naam}')">⬇ ${o.bestand_naam.substring(0,20)}${o.bestand_naam.length>20?'…':''}</button>`
+        ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();downloadBestand('${o.ordernummer}','${o.bestand_naam}')">⬇ ${o.bestand_naam.substring(0,20)}${o.bestand_naam.length>20?'…':''}</button>`
         : '<span style="color:var(--muted);font-size:11px">Geen bestand</span>'}</td>
       <td>${o.gripp_offerte_id
         ? `<span class="badge badge-green">✓ #${o.gripp_offerte_id}</span>`
@@ -430,7 +430,7 @@ function renderBestanden() {
         <div style="font-size:10px;color:var(--muted)">${o.klant?.email || ''}</div>
       </td>
       <td style="font-size:11px">${datumFmt(o.aangemaakt)}</td>
-      <td><button class="btn btn-green btn-sm" onclick="downloadBestand('${o.bestand_url}','${o.bestand_naam}')">⬇ Download</button></td>
+      <td><button class="btn btn-green btn-sm" onclick="downloadBestand('${o.ordernummer}','${o.bestand_naam}')">⬇ Download</button></td>
     </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Nog geen bestanden opgeslagen</td></tr>';
 }
 
@@ -438,7 +438,7 @@ function renderBestanden() {
 async function downloadBestand(key, naam) {
   showToast('Bestand downloaden…');
   try {
-    const resp = await fetch(`/.netlify/functions/get-bestand?key=${encodeURIComponent(key)}&secret=${encodeURIComponent(adminSecret)}`);
+    const resp = await fetch(`/.netlify/functions/get-bestand?ordernummer=${encodeURIComponent(key)}&secret=${encodeURIComponent(adminSecret)}`);
     if (!resp.ok) throw new Error('Download mislukt');
     const blob = await resp.blob();
     const a = document.createElement('a');

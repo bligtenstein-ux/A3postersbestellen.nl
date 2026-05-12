@@ -2,6 +2,6 @@
   "name": "a3postersbestellen",
   "version": "1.0.0",
   "dependencies": {
-    "@netlify/blobs": "^8.0.0"
+    "@neondatabase/serverless": "^0.9.0"
   }
 }

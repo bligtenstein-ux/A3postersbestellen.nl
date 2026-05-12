@@ -1,5 +1,24 @@
 // netlify/functions/save-order.js
-const { getDeployStore } = require('@netlify/blobs');
+const { neon } = require('@neondatabase/serverless');
+
+async function getDb() {
+  const sql = neon(process.env.DATABASE_URL);
+  await sql`
+    CREATE TABLE IF NOT EXISTS orders (
+      ordernummer TEXT PRIMARY KEY,
+      klant JSONB,
+      bestelling JSONB,
+      gripp_offerte_id TEXT,
+      bestand_url TEXT,
+      bestand_naam TEXT,
+      bestand_data TEXT,
+      bestand_type TEXT,
+      status TEXT DEFAULT 'nieuw',
+      aangemaakt TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  return sql;
+}
 
 exports.handler = async (event) => {
   const headers = {
@@ -13,35 +32,29 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body || '{}');
-    const { ordernummer, klant, bestelling, gripp_offerte_id, bestand_data, bestand_naam, bestand_type } = body;
+    const { ordernummer, klant, bestelling, gripp_offerte_id,
+            bestand_data, bestand_naam, bestand_type } = body;
 
     if (!ordernummer) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ordernummer verplicht' }) };
 
-    // Bestand opslaan
-    let bestand_url = null;
-    if (bestand_data && bestand_naam) {
-      const bestandStore = getDeployStore('bestanden');
-      const buffer = Buffer.from(bestand_data, 'base64');
-      const bestandKey = `${ordernummer}___${bestand_naam}`;
-      await bestandStore.set(bestandKey, buffer, {
-        metadata: { naam: bestand_naam, type: bestand_type || 'application/octet-stream', ordernummer },
-      });
-      bestand_url = bestandKey;
-    }
+    const sql = await getDb();
 
-    // Order opslaan
-    const orderStore = getDeployStore('orders');
-    const order = {
-      ordernummer,
-      klant,
-      bestelling,
-      gripp_offerte_id: gripp_offerte_id || null,
-      bestand_url,
-      bestand_naam: bestand_naam || null,
-      status: 'nieuw',
-      aangemaakt: new Date().toISOString(),
-    };
-    await orderStore.setJSON(ordernummer, order);
+    await sql`
+      INSERT INTO orders (ordernummer, klant, bestelling, gripp_offerte_id,
+                          bestand_url, bestand_naam, bestand_data, bestand_type, status)
+      VALUES (
+        ${ordernummer},
+        ${JSON.stringify(klant)},
+        ${JSON.stringify(bestelling)},
+        ${gripp_offerte_id || null},
+        ${bestand_naam || null},
+        ${bestand_naam || null},
+        ${bestand_data || null},
+        ${bestand_type || null},
+        'nieuw'
+      )
+      ON CONFLICT (ordernummer) DO NOTHING
+    `;
 
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, ordernummer }) };
 
