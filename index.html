@@ -1853,16 +1853,64 @@
     if(!isOpen) item.classList.add('open');
   }
   async function submitOrder() {
-    const email=$('email').value.trim();
-    if(!state.file||!email.includes('@'))return;
-    const btn=$('orderBtn');
-    btn.innerHTML='<div class="spinner"></div> Verwerken...';
-    btn.disabled=true;
-    await new Promise(r=>setTimeout(r,2000));
-    const num='#PS-'+Math.floor(10000+Math.random()*90000);
-    $('successOrderNum').textContent=num;
-    $('successEmail').textContent=email;
-    $('successOverlay').classList.add('visible');
+    const email    = $('email').value.trim();
+    const firstName= $('firstName').value.trim();
+    const lastName = $('lastName').value.trim();
+    const company  = $('company')?.value.trim() || '';
+    const phone    = $('phone')?.value.trim()   || '';
+    const notes    = $('notes')?.value.trim()   || '';
+
+    if (!state.file || !email.includes('@')) return;
+
+    const btn = $('orderBtn');
+    btn.innerHTML = '<div class="spinner"></div> Bestelling verwerken...';
+    btn.disabled = true;
+
+    const ordernummer = 'PS-' + Math.floor(10000 + Math.random() * 90000);
+    const prijsPerStuk = tiers[state.tierIndex].price;
+
+    const payload = {
+      klant: {
+        email,
+        naam:     (firstName + ' ' + lastName).trim(),
+        bedrijf:  company,
+        telefoon: phone,
+        land:     'Nederland',
+      },
+      bestelling: {
+        ordernummer,
+        aantal:          state.qty,
+        prijs_per_stuk:  prijsPerStuk,
+        verzendmethode:  'verzenden',
+        verzendkosten:   0,
+        verzendland:     'NL',
+        bestandsnaam:    state.file.name,
+        opmerkingen:     notes,
+      },
+    };
+
+    try {
+      const resp = await fetch('/.netlify/functions/gripp-order', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+      const data = await resp.json();
+
+      if (data.success) {
+        $('successOrderNum').textContent = '#' + ordernummer;
+        $('successEmail').textContent    = email;
+        $('successOverlay').classList.add('visible');
+      } else {
+        alert('Er is iets misgegaan bij het verwerken van je bestelling.\nProbeer het opnieuw of bel 072 567 00 00.\n\n(' + (data.error || 'onbekende fout') + ')');
+        btn.innerHTML = 'Bestelling plaatsen';
+        btn.disabled  = false;
+      }
+    } catch (e) {
+      alert('Verbindingsfout. Controleer je internet en probeer opnieuw.');
+      btn.innerHTML = 'Bestelling plaatsen';
+      btn.disabled  = false;
+    }
   }
   function closeSuccess() {
     $('successOverlay').classList.remove('visible');
