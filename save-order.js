@@ -1,4 +1,3 @@
-// netlify/functions/save-order.js
 const { neon } = require('@neondatabase/serverless');
 
 async function getDb() {
@@ -41,13 +40,12 @@ exports.handler = async (event) => {
 
     await sql`
       INSERT INTO orders (ordernummer, klant, bestelling, gripp_offerte_id,
-                          bestand_url, bestand_naam, bestand_data, bestand_type, status)
+                          bestand_naam, bestand_data, bestand_type, status)
       VALUES (
         ${ordernummer},
         ${JSON.stringify(klant)},
         ${JSON.stringify(bestelling)},
         ${gripp_offerte_id || null},
-        ${bestand_naam || null},
         ${bestand_naam || null},
         ${bestand_data || null},
         ${bestand_type || null},
