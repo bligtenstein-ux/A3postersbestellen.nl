@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>A3postersbestellen.nl — Snel & Scherp Gedrukt</title>
+<title>A3 Posters Drukken | Snel & Goedkoop | A3postersbestellen.nl</title>
+<meta name="description" content="A3 posters drukken vanaf €9,75 per stuk. Gratis verzending, morgen in huis, betaal achteraf. Upload je ontwerp en ontvang kreukvrij bezorgd in koker.">
+<meta name="keywords" content="A3 poster drukken, A3 posters bestellen, A3 poster laten drukken, goedkope A3 poster, A3 poster online">
+<link rel="canonical" href="https://a3postersbestellen.nl/">
+<meta property="og:title" content="A3 Posters Drukken | Snel & Goedkoop | A3postersbestellen.nl">
+<meta property="og:description" content="A3 posters drukken vanaf €9,75. Gratis verzending, morgen in huis, betaal achteraf op factuur.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://a3postersbestellen.nl/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -204,6 +211,15 @@
     text-transform: uppercase;
     color: var(--ink-muted);
     margin-bottom: 10px;
+    display: block;
+  }
+  .section-label-lg {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-transform: none;
+    color: var(--ink);
+    margin-bottom: 4px;
     display: block;
   }
 
@@ -1141,19 +1157,38 @@
     </div>
 
     <div class="staffel-wrap">
-      <span class="section-label">Stap 1 &mdash; Enkelzijdig of dubbelzijdig?</span>
-      <div class="drukzijde-wrap">
-        <button class="drukzijde-btn active" id="btnEnkelzijdig" onclick="setDrukzijde('enkel')">
-          Enkelzijdig
-          <span class="drukzijde-sub">Bedrukt aan één kant</span>
-        </button>
-        <button class="drukzijde-btn" id="btnDubbelzijdig" onclick="setDrukzijde('dubbel')">
-          Dubbelzijdig
-          <span class="drukzijde-sub">+25% — bedrukt aan twee kanten</span>
-        </button>
+
+      <!-- STAP 1: DRUKZIJDE -->
+      <div class="stap-blok actief">
+        <div class="stap-nummer">
+          <div class="stap-badge">1</div>
+          <div>
+            <div class="stap-titel">Kies drukzijde</div>
+            <div class="stap-sub">Enkelzijdig of dubbelzijdig bedrukt?</div>
+          </div>
+        </div>
+        <div class="drukzijde-wrap">
+          <button class="drukzijde-btn active" id="btnEnkelzijdig" onclick="setDrukzijde('enkel')">
+            Enkelzijdig
+            <span class="drukzijde-sub">Bedrukt aan één kant — standaard prijs</span>
+          </button>
+          <button class="drukzijde-btn" id="btnDubbelzijdig" onclick="setDrukzijde('dubbel')">
+            Dubbelzijdig
+            <span class="drukzijde-sub">Bedrukt aan twee kanten — +25%</span>
+          </button>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-        <span class="section-label" style="margin-bottom:0">Kies je aantal</span>
+
+      <!-- STAP 2: AANTAL -->
+      <div class="stap-blok">
+        <div class="stap-nummer">
+          <div class="stap-badge">2</div>
+          <div>
+            <div class="stap-titel">Kies je aantal</div>
+            <div class="stap-sub">Meer stuks = lagere prijs per stuk</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
         <div class="qty-direct-wrap">
           <span style="font-size:12px;color:var(--ink-muted);font-weight:500">Of typ exact aantal:</span>
           <div class="qty-direct-row">
@@ -1217,10 +1252,19 @@
         </div>
       </div>
       <div class="staffel-hint" id="staffelHint"></div>
-    </div>
+      </div><!-- einde stap-blok aantal -->
+    </div><!-- einde staffel-wrap -->
 
     <div class="editor-wrap">
-      <span class="section-label">Stap 2 — Upload en controleer je ontwerp</span>
+      <div class="stap-blok" style="margin-bottom:12px;padding-bottom:0;border-bottom:none;">
+        <div class="stap-nummer" style="margin-bottom:0">
+          <div class="stap-badge">3</div>
+          <div>
+            <div class="stap-titel">Upload je ontwerp</div>
+            <div class="stap-sub">PDF, PNG of JPG — wij checken het gratis voor het drukken</div>
+          </div>
+        </div>
+      </div>
 
       <!-- Drop zone (verborgen na upload) -->
       <div class="editor-drop-zone" id="uploadZone">
