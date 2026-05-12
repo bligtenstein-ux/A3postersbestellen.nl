@@ -1149,7 +1149,7 @@
         </button>
         <button class="drukzijde-btn" id="btnDubbelzijdig" onclick="setDrukzijde('dubbel')">
           Dubbelzijdig
-          <span class="drukzijde-sub">+35% — bedrukt aan twee kanten</span>
+          <span class="drukzijde-sub">+25% — bedrukt aan twee kanten</span>
         </button>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
@@ -1512,7 +1512,7 @@
   const fmt = n => '€' + n.toFixed(2).replace('.',',');
 
   // Drukzijde factor: dubbelzijdig = 1.35x prijs
-  function getDrukFactor() { return state.drukzijde === 'dubbel' ? 1.35 : 1.0; }
+  function getDrukFactor() { return state.drukzijde === 'dubbel' ? 1.25 : 1.0; }
 
   function setDrukzijde(type) {
     state.drukzijde = type;
