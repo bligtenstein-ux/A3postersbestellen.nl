@@ -3,7 +3,21 @@
   publish   = "."
   command   = "npm install"
 
-# CORS headers voor de API
+[functions]
+  node_bundler = "esbuild"
+
+[functions."gripp-order"]
+  timeout = 30
+
+[functions."save-order"]
+  timeout = 30
+
+[functions."get-orders"]
+  timeout = 30
+
+[functions."get-bestand"]
+  timeout = 30
+
 [[headers]]
   for = "/api/*"
   [headers.values]
@@ -11,13 +25,7 @@
     Access-Control-Allow-Headers = "Content-Type, X-Admin-Secret"
     Access-Control-Allow-Methods = "POST, OPTIONS"
 
-# Redirect /api/gripp-order → Netlify Function
 [[redirects]]
   from   = "/api/gripp-order"
-  to     = "/.netlify/functions/gripp-order"
-  status = 200
-
-[[redirects]]
-  from   = "/api/test-gripp"
   to     = "/.netlify/functions/gripp-order"
   status = 200
