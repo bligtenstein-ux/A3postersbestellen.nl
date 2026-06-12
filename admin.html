@@ -182,7 +182,7 @@ html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--s
           <div class="stat-card"><div class="stat-label">Naar Gripp</div><div class="stat-value" id="statGripp">—</div></div>
         </div>
         <div class="section">
-          <div class="section-header"><div class="section-title">Recente orders</div><button class="btn btn-ghost btn-sm" onclick="showView('orders',document.querySelector('.nav-item:nth-child(2))'))">Alle orders →</button></div>
+          <div class="section-header"><div class="section-title">Recente orders</div><button class="btn btn-ghost btn-sm" onclick="showView('orders',document.querySelectorAll('.nav-item')[1])">Alle orders →</button></div>
           <table class="tbl"><thead><tr><th>Order #</th><th>Klant</th><th>Aantal</th><th>Totaal</th><th>Gripp</th><th>Status</th><th>Datum</th></tr></thead>
           <tbody id="recentOrders"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)"><div class="spinner"></div> Laden…</td></tr></tbody></table>
         </div>
@@ -361,11 +361,14 @@ function renderOrders() {
         <div style="font-size:10px;color:var(--muted)">${o.klant?.email || ''}</div>
         ${o.klant?.bedrijf ? `<div style="font-size:10px;color:var(--muted)">${o.klant.bedrijf}</div>` : ''}
       </td>
-      <td>${o.bestelling?.aantal || '—'} st.</td>
+      <td>${o.bestelling?.aantal || '—'} st.${o.bestelling?.drukzijde === 'dubbel' ? '<br><span class="badge badge-yellow" style="margin-top:2px">2-zijdig</span>' : ''}</td>
       <td class="mono">€ ${totaal.toFixed(2).replace('.',',')}</td>
       <td>${o.bestand_naam
         ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();downloadBestand('${o.ordernummer}','${o.bestand_naam}')">⬇ ${o.bestand_naam.substring(0,20)}${o.bestand_naam.length>20?'…':''}</button>`
-        : '<span style="color:var(--muted);font-size:11px">Geen bestand</span>'}</td>
+        : '<span style="color:var(--muted);font-size:11px">Geen bestand</span>'}
+        ${o.bestand_naam_achter
+        ? `<button class="btn btn-ghost btn-sm" style="margin-top:3px" onclick="event.stopPropagation();downloadBestand('${o.ordernummer}','${o.bestand_naam_achter}','achter')">⬇ Achterzijde</button>`
+        : ''}</td>
       <td>${o.gripp_offerte_id
         ? `<span class="badge badge-green">✓ #${o.gripp_offerte_id}</span>`
         : `<button class="btn btn-sm btn-green" onclick="event.stopPropagation();stuurNaarGripp('${o.ordernummer}')">→ Gripp</button>`}</td>
@@ -384,10 +387,12 @@ function renderOrders() {
             <div>${o.klant?.email || ''}</div>
             <div>${o.klant?.telefoon || ''}</div>
             <div>${o.klant?.bedrijf || ''}</div>
+            ${o.klant?.adres?.straat ? `<div style="margin-top:6px;color:var(--text2)">${o.klant.adres.straat}<br>${o.klant.adres.postcode || ''} ${o.klant.adres.plaats || ''} (${o.klant.adres.land || ''})</div>` : ''}
+            ${o.klant?.afleveradres ? `<div style="margin-top:6px"><span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Afleveradres</span><br>${o.klant.afleveradres.bedrijf ? o.klant.afleveradres.bedrijf + '<br>' : ''}${o.klant.afleveradres.straat || ''}<br>${o.klant.afleveradres.postcode || ''} ${o.klant.afleveradres.plaats || ''} (${o.klant.afleveradres.land || ''})</div>` : ''}
           </div>
           <div>
             <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Bestelling</div>
-            <div>${o.bestelling?.aantal} × A3 poster</div>
+            <div>${o.bestelling?.aantal} × A3 poster — ${o.bestelling?.drukzijde === 'dubbel' ? 'dubbelzijdig' : 'enkelzijdig'}</div>
             <div>€ ${(o.bestelling?.prijs_per_stuk||0).toFixed(2).replace('.',',')} per stuk</div>
             <div>Verzending: ${o.bestelling?.verzendmethode || '—'}</div>
             ${o.bestelling?.opmerkingen ? `<div style="margin-top:4px;color:var(--muted)">Opmerking: ${o.bestelling.opmerkingen}</div>` : ''}
@@ -418,11 +423,15 @@ function setTab(tab, el) {
 
 // ── BESTANDEN ─────────────────────────────────────────────────
 function renderBestanden() {
-  const metBestand = alleOrders.filter(o => o.bestand_url);
-  $('bestandenLijst').innerHTML = metBestand.map(o => `
+  const rijen = [];
+  alleOrders.forEach(o => {
+    if (o.bestand_naam) rijen.push({ o, naam: o.bestand_naam, zijde: 'voor',   label: '' });
+    if (o.bestand_naam_achter) rijen.push({ o, naam: o.bestand_naam_achter, zijde: 'achter', label: ' <span class="badge badge-yellow">achterzijde</span>' });
+  });
+  $('bestandenLijst').innerHTML = rijen.map(({ o, naam, zijde, label }) => `
     <tr>
       <td>
-        <div style="font-weight:600;font-family:'JetBrains Mono',monospace;font-size:11px">${o.bestand_naam}</div>
+        <div style="font-weight:600;font-family:'JetBrains Mono',monospace;font-size:11px">${naam}${label}</div>
       </td>
       <td class="mono">${o.ordernummer}</td>
       <td>
@@ -430,15 +439,15 @@ function renderBestanden() {
         <div style="font-size:10px;color:var(--muted)">${o.klant?.email || ''}</div>
       </td>
       <td style="font-size:11px">${datumFmt(o.aangemaakt)}</td>
-      <td><button class="btn btn-green btn-sm" onclick="downloadBestand('${o.ordernummer}','${o.bestand_naam}')">⬇ Download</button></td>
+      <td><button class="btn btn-green btn-sm" onclick="downloadBestand('${o.ordernummer}','${naam}','${zijde}')">⬇ Download</button></td>
     </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Nog geen bestanden opgeslagen</td></tr>';
 }
 
 // ── DOWNLOAD BESTAND ──────────────────────────────────────────
-async function downloadBestand(key, naam) {
+async function downloadBestand(key, naam, zijde = 'voor') {
   showToast('Bestand downloaden…');
   try {
-    const resp = await fetch(`/.netlify/functions/get-bestand?ordernummer=${encodeURIComponent(key)}&secret=${encodeURIComponent(adminSecret)}`);
+    const resp = await fetch(`/.netlify/functions/get-bestand?ordernummer=${encodeURIComponent(key)}&secret=${encodeURIComponent(adminSecret)}&zijde=${encodeURIComponent(zijde)}`);
     if (!resp.ok) throw new Error('Download mislukt');
     const blob = await resp.blob();
     const a = document.createElement('a');

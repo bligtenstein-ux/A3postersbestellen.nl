@@ -13,7 +13,7 @@
 <meta property="og:url" content="https://a3postersbestellen.nl/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --green:        #3aaa35;
@@ -1142,8 +1142,228 @@
   }
   .sectie-titel { font-size: 15px; font-weight: 700; color: #111; }
   .sectie-omschrijving { font-size: 12px; color: #767676; margin-top: 2px; }
+
+  /* ════════════════════════════════════════════════════════════════════
+     MODERNISERING — overridelaag (2026)
+     Grotere radii, zachte schaduwen, betere focus-states, hero-verfijning,
+     achterzijde-upload, mobiele bestelbalk en soepel scrollen.
+     ════════════════════════════════════════════════════════════════════ */
+  :root {
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(17,17,17,0.05), 0 4px 14px rgba(17,17,17,0.04);
+    --shadow-md: 0 4px 10px rgba(17,17,17,0.06), 0 14px 34px rgba(17,17,17,0.08);
+  }
+  html { scroll-behavior: smooth; }
+  [id] { scroll-margin-top: 80px; }
+  body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+  nav {
+    height: 62px;
+    box-shadow: 0 1px 0 var(--line), 0 6px 18px rgba(17,17,17,0.04);
+    border-bottom: none;
+  }
+
+  h1 { font-size: clamp(2rem, 4.5vw, 2.7rem); }
+
+  /* Hero rating-regel */
+  .hero-rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-mid);
+    text-decoration: none;
+    margin: -0.5rem 0 1.5rem;
+    transition: color .15s;
+  }
+  .hero-rating:hover { color: var(--green-dark); }
+  .hero-rating-stars { color: #f59e0b; letter-spacing: 1.5px; font-size: 14px; }
+
+  /* Hero USP-pills: groen vinkje + subtiele lift */
+  .hero-usp-pill {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 9px;
+    row-gap: 2px;
+    align-items: start;
+    border-radius: var(--radius-md);
+    transition: border-color .15s, box-shadow .15s, transform .15s;
+  }
+  .hero-usp-pill::before {
+    content: '\2713';
+    grid-row: 1 / 3;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--green-light);
+    border: 1px solid var(--green-border);
+    color: var(--green-dark);
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+  .hero-usp-pill:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+
+  /* Staffel: vriendelijker en voelbaar klikbaar */
+  .staffel-item {
+    border-radius: 10px;
+    transition: border-color .12s, background .12s, transform .12s, box-shadow .12s;
+  }
+  .staffel-item:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+  .staffel-item.active { box-shadow: 0 0 0 3px rgba(58,170,53,0.10); }
+
+  /* Bestelkaart: meer diepte, frissere header */
+  .order-card {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    border-color: #ececec;
+  }
+  .card-header { background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 100%); }
+
+  /* Bestelknop met aanwezigheid */
+  .btn-order {
+    border-radius: 10px;
+    padding: 15px 20px;
+    box-shadow: 0 4px 14px rgba(58,170,53,0.32);
+    transition: background .15s, transform .12s, box-shadow .15s;
+  }
+  .btn-order:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(58,170,53,0.38); }
+  .btn-order:disabled { box-shadow: none; }
+
+  /* Formuliervelden: nette focus-ring + selects gelijk aan inputs */
+  .field input:focus, .field textarea:focus, .field select:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px rgba(58,170,53,0.13);
+  }
+  .field select {
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    font-family: var(--font);
+    font-size: 14px;
+    color: var(--ink);
+    background: #fff;
+    outline: none;
+    transition: border-color 0.12s, box-shadow 0.12s;
+    width: 100%;
+  }
+  .field input, .field textarea { transition: border-color 0.12s, box-shadow 0.12s; }
+
+  /* Verhaal-, review- en garantieblokken verfijnen */
+  .story-block { border-radius: var(--radius-lg); background: linear-gradient(150deg, #161616 0%, #1f1f1f 100%); }
+  .guarantee-block { border-radius: var(--radius-lg); }
+  .review-card { background: #fff; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: 16px; }
+
+  /* Achterzijde-upload (dubbelzijdig) */
+  .achterzijde-section { display: none; margin-top: 1rem; }
+  .achterzijde-section.visible { display: block; }
+  .achter-file-strip {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    background: var(--green-light);
+    border: 1px solid var(--green-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green-dark);
+  }
+  .achter-file-strip.visible { display: flex; }
+  .achter-check {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--green);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .achter-filename { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Mobiele sticky bestelbalk */
+  .mobile-orderbar {
+    display: none;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 200;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -6px 24px rgba(17,17,17,0.10);
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .mob-price { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+  .mob-total { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); }
+  .mob-sub { font-size: 11px; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mob-btn {
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 22px;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(58,170,53,0.32);
+    flex-shrink: 0;
+  }
+  @media (max-width: 780px) {
+    .mobile-orderbar { display: flex; }
+    main { padding-bottom: 6.5rem; }
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "A3 poster drukken (297 \u00d7 420 mm)",
+  "description": "A3 posters digitaal gedrukt, kreukvrij bezorgd per koker. Voor 11:00 besteld, morgen in huis. Gratis verzending in Nederland en Belgi\u00eb, betalen achteraf op factuur.",
+  "brand": { "@type": "Brand", "name": "A3postersbestellen.nl" },
+  "offers": {
+    "@type": "AggregateOffer",
+    "priceCurrency": "EUR",
+    "lowPrice": "0.47",
+    "highPrice": "9.75",
+    "availability": "https://schema.org/InStock",
+    "url": "https://a3postersbestellen.nl/"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "Wat is de uiterste besteltijd voor levering morgen?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Bestel je v\u00f3\u00f3r 11:00, dan ontvang je je poster(s) de volgende werkdag. Orders na 11:00 worden de dag erna verwerkt." } },
+    { "@type": "Question", "name": "In welk formaat moet ik mijn bestand aanleveren?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Wij accepteren PDF, PNG, JPG en TIFF. PDF heeft de voorkeur omdat het vectorkwaliteit garandeert. Zorg voor een resolutie van minimaal 150 dpi bij A3-formaat (297 \u00d7 420 mm) met 3 mm afloop rondom." } },
+    { "@type": "Question", "name": "Wanneer betaal ik?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Betaal achteraf \u2014 wij sturen je een factuur per e-mail zodra je bestelling is verzonden. Betalen kan via iDEAL, creditcard of bankoverschrijving." } },
+    { "@type": "Question", "name": "Hoe worden de posters verpakt?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Iedere poster wordt voorzichtig gerold en in een stevige kartonnen koker geplaatst. Zo komen ze kreukvrij aan." } },
+    { "@type": "Question", "name": "Wat als ik niet tevreden ben?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Wij staan 100% achter onze kwaliteit. Niet tevreden over onze drukkwaliteit? Wij drukken je bestelling opnieuw. Gratis, zonder discussie." } },
+    { "@type": "Question", "name": "Controleren jullie mijn bestand?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Ja, altijd. Voor we drukken controleren we je bestand op resolutie, afloop en kleurprofiel. Mocht er iets niet kloppen, nemen we contact met je op." } }
+  ]
+}
+</script>
 </head>
 <body>
 
@@ -1159,9 +1379,9 @@
     </div>
   </a>
   <div class="nav-links">
-    <a href="#">Hoe het werkt</a>
-    <a href="#">Kwaliteit</a>
-    <a href="#">Veelgestelde vragen</a>
+    <a href="#stepsBar">Hoe het werkt</a>
+    <a href="#waarom">Kwaliteit</a>
+    <a href="#faq">Veelgestelde vragen</a>
   </div>
   <a class="nav-phone" href="tel:0725670000">072 567 00 00</a>
 </nav>
@@ -1175,12 +1395,17 @@
     <h1>A3 Posters drukken<br><em>snel, scherp &amp; persoonlijk</em></h1>
     <p class="page-lead">Upload je ontwerp, kies je aantal en ontvang morgen je posters kreukvrij per koker. Buro Extern regelt de rest — met persoonlijke aandacht en 100% kwaliteitsgarantie.</p>
 
+    <a class="hero-rating" href="#reviews">
+      <span class="hero-rating-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+      <span>Bekijk wat klanten over ons zeggen &rarr;</span>
+    </a>
+
     <div class="hero-usps">
-      <div class="hero-usp-pill accent">
+      <div class="hero-usp-pill">
         <strong>Gratis verzending</strong>
         <span class="usp-sub">Heel Nederland &amp; België</span>
       </div>
-      <div class="hero-usp-pill accent">
+      <div class="hero-usp-pill">
         <strong>Morgen in huis</strong>
         <span class="usp-sub">Bestel voor 11:00 uur</span>
       </div>
@@ -1200,25 +1425,32 @@
 
     <!-- 3 BESTELSTAPPEN -->
     <div class="steps-bar" id="stepsBar">
-      <div class="step active" id="step1">
+      <div class="step done" id="step1">
         <div class="step-num">1</div>
         <div class="step-info">
           <div class="step-label">Stap 1</div>
-          <div class="step-title">Kies aantal</div>
+          <div class="step-title">Drukzijde</div>
         </div>
       </div>
-      <div class="step" id="step2">
+      <div class="step done" id="step2">
         <div class="step-num">2</div>
         <div class="step-info">
           <div class="step-label">Stap 2</div>
-          <div class="step-title">Upload ontwerp</div>
+          <div class="step-title">Aantal</div>
         </div>
       </div>
-      <div class="step" id="step3">
+      <div class="step active" id="step3">
         <div class="step-num">3</div>
         <div class="step-info">
           <div class="step-label">Stap 3</div>
-          <div class="step-title">Vul gegevens in</div>
+          <div class="step-title">Upload ontwerp</div>
+        </div>
+      </div>
+      <div class="step" id="step4">
+        <div class="step-num">4</div>
+        <div class="step-info">
+          <div class="step-label">Stap 4</div>
+          <div class="step-title">Jouw gegevens</div>
         </div>
       </div>
     </div>
@@ -1266,7 +1498,7 @@
       </div>
       <div style="display:flex;align-items:center;justify-content:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
         <div class="qty-direct-wrap">
-          <span style="font-size:12px;color:var(--ink-muted);font-weight:500">Of typ exact aantal:</span>
+          <span style="font-size:12px;color:var(--ink-muted);font-weight:500">Exact aantal:</span>
           <div class="qty-direct-row">
             <button class="qty-direct-btn" onclick="changeQty(-1)">&#8722;</button>
             <input class="qty-direct-input" type="number" id="qtyDirect" min="1" max="9999" value="1"
@@ -1358,8 +1590,10 @@
         <div class="editor-toolbar">
           <div class="editor-filename" id="editorFilename">bestand.png <span>— 0.0 MB</span></div>
           <div class="editor-actions">
-            <button class="btn-action" id="btnRotate" onclick="rotateImage()">Roteren 90°</button>
-            <button class="btn-action btn-action-green" id="btnFit" onclick="maakPassend()" title="Plaatst je afbeelding op een wit A3-canvas met correcte afmetingen en afloop. De beeldverhouding blijft intact.">Maak A3 passend</button>
+            <button class="btn-action" id="btnRotateL" onclick="rotateImage(-1)" title="Draai 90° tegen de klok in">&#8634; Linksom</button>
+            <button class="btn-action" id="btnRotateR" onclick="rotateImage(1)" title="Draai 90° met de klok mee">&#8635; Rechtsom</button>
+            <button class="btn-action btn-action-green" id="btnFitContain" onclick="maakPassend('contain')" title="Plaatst je ontwerp op een wit A3-canvas met afloop. De beeldverhouding blijft intact — witruimte wordt toegevoegd waar nodig.">Passend op A3</button>
+            <button class="btn-action btn-action-green" id="btnFitCover" onclick="maakPassend('cover')" title="Vult het volledige A3-vlak inclusief afloop. De beeldverhouding blijft intact — uitstekende randen worden bijgesneden.">Vullend op A3</button>
             <button class="btn-action" onclick="resetEditor()">Ander bestand</button>
           </div>
         </div>
@@ -1403,6 +1637,27 @@
         </div>
 
       </div>
+
+      <!-- ACHTERZIJDE (alleen zichtbaar bij dubbelzijdig) -->
+      <div class="achterzijde-section" id="achterzijdeSection">
+        <div class="sectie-header" style="margin-top:1.25rem">
+          <div class="sectie-nr" style="font-size:12px">3b</div>
+          <div>
+            <div class="sectie-titel">Upload de achterzijde</div>
+            <div class="sectie-omschrijving">Je koos dubbelzijdig — upload ook het ontwerp voor de achterkant</div>
+          </div>
+        </div>
+        <div class="editor-drop-zone" id="achterUploadZone">
+          <input type="file" id="fileInputAchter" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp" onchange="handleFileAchter(this.files[0])">
+          <div class="editor-drop-title">Sleep de achterzijde hierheen of klik om te uploaden</div>
+          <div class="editor-drop-sub">PDF, PNG of JPG — max. 50 MB</div>
+        </div>
+        <div class="achter-file-strip" id="achterFileStrip">
+          <span class="achter-check">&#10003;</span>
+          <span class="achter-filename" id="achterFilename">bestand.pdf</span>
+          <button class="preview-remove" onclick="removeFileAchter()" title="Verwijder achterzijde">&times;</button>
+        </div>
+      </div>
     </div>
 
     <div class="specs-row">
@@ -1413,7 +1668,13 @@
     </div>
 
     <div class="form-section">
-      <span class="section-label">Stap 3 — Jouw gegevens</span>
+      <div class="sectie-header">
+        <div class="sectie-nr">4</div>
+        <div>
+          <div class="sectie-titel">Jouw gegevens</div>
+          <div class="sectie-omschrijving">Voor de orderbevestiging, factuur en bezorging</div>
+        </div>
+      </div>
       <div class="field"><label>Bedrijfsnaam</label><input type="text" id="company" placeholder="Mijn BV"></div>
       <div class="form-grid-2">
         <div class="field"><label>Voornaam</label><input type="text" id="firstName" placeholder="Jan"></div>
@@ -1476,7 +1737,7 @@
     </div>
 
     <!-- VERHAALBLOK -->
-    <div class="story-block">
+    <div class="story-block" id="waarom">
       <h2>Waarom A3postersbestellen.nl?</h2>
       <p>Wij zijn geen anoniem printplatform. Als onderdeel van Buro Extern in Alkmaar staan echte mensen achter elke bestelling — mensen die drukwerk begrijpen en met je meedenken. Besteld voor 11:00? Dan liggen je posters morgen op je deurmat, kreukvrij verpakt in een koker.</p>
       <div class="story-usps">
@@ -1508,7 +1769,7 @@
     </div>
 
     <!-- REVIEWS -->
-    <div class="section-label">Wat klanten zeggen</div>
+    <div class="section-label" id="reviews">Wat klanten zeggen</div>
     <div class="reviews-row">
       <div class="review-card">
         <div class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
@@ -1528,7 +1789,7 @@
     </div>
 
     <!-- FAQ -->
-    <div class="section-label">Veelgestelde vragen</div>
+    <div class="section-label" id="faq">Veelgestelde vragen</div>
     <div class="faq-list">
       <div class="faq-item" onclick="toggleFaq(this)">
         <button class="faq-q">Wat is de uiterste besteltijd voor levering morgen? <span class="faq-chevron">&#8964;</span></button>
@@ -1660,11 +1921,25 @@
 
   function handleFileAchter(file) {
     if (!file) return;
+    if (file.size > 50*1024*1024) { alert('Bestand is groter dan 50 MB. Gebruik een kleiner bestand.'); return; }
     state.fileAchter = file;
+    const zone = $('achterUploadZone');
+    if (zone) zone.style.display = 'none';
     const fn = $('achterFilename');
-    const ph = $('canvasPlaceholderAchter');
-    if (fn) { fn.style.display = 'block'; fn.textContent = '✓ ' + file.name; }
-    if (ph) ph.style.display = 'none';
+    if (fn) fn.textContent = file.name + ' — ' + (file.size/1024/1024).toFixed(1) + ' MB';
+    const strip = $('achterFileStrip');
+    if (strip) strip.classList.add('visible');
+    updateButton();
+  }
+
+  function removeFileAchter() {
+    state.fileAchter = null;
+    const strip = $('achterFileStrip');
+    if (strip) strip.classList.remove('visible');
+    const zone = $('achterUploadZone');
+    if (zone) zone.style.display = '';
+    const inp = $('fileInputAchter');
+    if (inp) inp.value = '';
     updateButton();
   }
 
@@ -1680,6 +1955,7 @@
     state.tierIndex=getTierIdx(min);
     if(state.qty<min){state.qty=min;$('qtyInput').value=min;}
     if(state.qty>max&&max<999){state.qty=max;$('qtyInput').value=max;}
+    syncDirectInput();
     highlightTier(); updatePrice();
   }
   function syncDirectInput() {
@@ -1729,13 +2005,34 @@
     }
     const pct=Math.round(((tiers[0].price-p)/tiers[0].price)*100);
     $('staffelHint').textContent=pct>0?`${pct}% korting op de stuksprijs`:'';
+
+    // Mobiele bestelbalk bijwerken
+    const mobTotal = $('mobTotal'), mobSub = $('mobSub');
+    if(mobTotal) mobTotal.textContent = fmt(total);
+    if(mobSub) mobSub.textContent = `${state.qty} ${state.qty===1?'stuk':'stuks'} · incl. btw · gratis verzending`;
   }
   // ── EDITOR STATE ──
-  let imgEl = null;
+  let imgEl = null;        // huidige weergave-afbeelding
+  let origFile = null;     // origineel geüpload bestand (basis voor rotatie)
   let rotation = 0;
+  let fitApplied = null;   // null | 'contain' | 'cover'
   let pdfDoc = null;
   let pdfPage = 1;
   let pdfTotalPages = 1;
+
+  function setFilenameLabel(file) {
+    if(!file) return;
+    $('editorFilename').innerHTML = `<strong>${file.name}</strong> <span>— ${(file.size/1024/1024).toFixed(1)} MB</span>`;
+  }
+
+  function resetFitState() {
+    fitApplied = null;
+    const bc = $('btnFitContain'), bv = $('btnFitCover');
+    if(bc){ bc.classList.remove('applied'); bc.textContent = 'Passend op A3'; }
+    if(bv){ bv.classList.remove('applied'); bv.textContent = 'Vullend op A3'; }
+    const info = $('passendInfo');
+    if(info) info.classList.remove('visible');
+  }
 
   const DPI_LEVELS = [
     { min:0,   max:72,  dots:1, cls:'q1', label:'Zeer lage kwaliteit', sub:'Afdruk zal waarschijnlijk wazig of gepixeld zijn. Gebruik een hogere resolutie.' },
@@ -1746,8 +2043,10 @@
   ];
 
   function calcDpi(w, h) {
-    const longest = Math.max(w, h);
-    return Math.round(longest / 16.535);
+    // A3 = 297 x 420 mm = 11,693 x 16,535 inch.
+    // De beperkende zijde bepaalt de werkelijke afdrukresolutie.
+    const lang = Math.max(w, h), kort = Math.min(w, h);
+    return Math.round(Math.min(lang / 16.535, kort / 11.693));
   }
 
   function updateDpiMeter(dpi) {
@@ -1791,21 +2090,62 @@
     $('canvasPlaceholder').style.display = 'none';
   }
 
-  function rotateImage() {
-    rotation = (rotation+90)%360;
-    if(pdfDoc) { renderPdfPage(pdfPage); return; }
+  function rotateImage(dir = 1) {
+    rotation = (rotation + (dir === -1 ? 270 : 90)) % 360;
+    resetFitState();
+
+    if(pdfDoc) {
+      // PDF: rotatie is alleen zichtbaar in de preview — het originele PDF-bestand
+      // blijft het drukbestand. Waarschuw de klant en bied de oplossing aan.
+      renderPdfPage(pdfPage);
+      if(rotation !== 0) {
+        const info = $('passendInfo');
+        $('passendInfoText').innerHTML =
+          '<strong>Let op:</strong> de rotatie is nu alleen zichtbaar in de preview. ' +
+          'Klik op <strong>"Passend op A3"</strong> of <strong>"Vullend op A3"</strong> om de rotatie definitief in je drukbestand te verwerken.';
+        info.classList.add('visible');
+      }
+      return;
+    }
+
     drawCanvas();
     if(imgEl){
       const rotated = rotation===90||rotation===270;
       updateDpiMeter(calcDpi(rotated?imgEl.naturalHeight:imgEl.naturalWidth, rotated?imgEl.naturalWidth:imgEl.naturalHeight));
     }
-    // Passend-staat resetten na rotatie
-    const btn = $('btnFit');
-    if(btn) btn.classList.remove('applied');
-    $('passendInfo').classList.remove('visible');
+    // Rotatie direct verwerken in het bestand dat naar de drukkerij gaat
+    bakeRotationIntoFile();
   }
 
-  function maakPassend() {
+  function bakeRotationIntoFile() {
+    if(!imgEl || pdfDoc) return;
+    // Terug op 0 graden: herstel het originele bestand (geen kwaliteitsverlies)
+    if(rotation === 0) {
+      if(origFile) { state.file = origFile; setFilenameLabel(state.file); }
+      updateButton();
+      return;
+    }
+    const rotated = rotation===90||rotation===270;
+    const w = imgEl.naturalWidth, h = imgEl.naturalHeight;
+    const off = document.createElement('canvas');
+    off.width  = rotated ? h : w;
+    off.height = rotated ? w : h;
+    const ctx = off.getContext('2d');
+    ctx.translate(off.width/2, off.height/2);
+    ctx.rotate(rotation*Math.PI/180);
+    ctx.drawImage(imgEl, -w/2, -h/2);
+    const baseName = (origFile ? origFile.name : 'ontwerp').replace(/\.[^.]+$/, '');
+    const useJpeg  = origFile && origFile.type === 'image/jpeg';
+    const mime     = useJpeg ? 'image/jpeg' : 'image/png';
+    off.toBlob(blob => {
+      if(!blob) return;
+      state.file = new File([blob], baseName + '_rot' + rotation + (useJpeg ? '.jpg' : '.png'), {type: mime});
+      setFilenameLabel(state.file);
+      updateButton();
+    }, mime, 0.95);
+  }
+
+  function maakPassend(mode = 'contain') {
     if(!imgEl) return;
 
     // A3 met 3mm afloop aan alle kanten = 303 x 426mm
@@ -1822,11 +2162,16 @@
     const srcW = rotated ? imgEl.naturalHeight : imgEl.naturalWidth;
     const srcH = rotated ? imgEl.naturalWidth  : imgEl.naturalHeight;
 
-    // Schaal proportioneel zodat afbeelding past binnen het A3 canvas
-    // (met 3mm marge = 6mm totaal binnenruimte: 291 x 414mm)
-    const innerW = Math.round(291 * MM_TO_PX);
-    const innerH = Math.round(414 * MM_TO_PX);
-    const scale  = Math.min(innerW / srcW, innerH / srcH);
+    let scale;
+    if(mode === 'cover') {
+      // Vullend: schaal zo dat het volledige afloopvlak gevuld is — randen worden bijgesneden
+      scale = Math.max(canvW / srcW, canvH / srcH);
+    } else {
+      // Passend: binnen 291 x 414mm (3mm marge binnen de snijlijn) met witruimte
+      const innerW = Math.round(291 * MM_TO_PX);
+      const innerH = Math.round(414 * MM_TO_PX);
+      scale = Math.min(innerW / srcW, innerH / srcH);
+    }
     const dw = Math.round(srcW * scale);
     const dh = Math.round(srcH * scale);
     const dx = Math.round((canvW - dw) / 2);
@@ -1856,31 +2201,46 @@
     const newImg = new Image();
     newImg.onload = () => {
       imgEl = newImg;
-      rotation = 0; // rotatie is al verwerkt
+      rotation = 0; // rotatie is nu definitief verwerkt
+
+      // BUGFIX: na passend/vullend maken is het resultaat een afbeelding —
+      // de PDF-staat moet weg, anders gooit roteren het resultaat weer overboord
+      pdfDoc = null;
+      $('pdfPageNav').classList.remove('visible');
 
       // Update preview
       drawCanvas();
 
       // Herbereken DPI op basis van het nieuwe canvas
       updateDpiMeter(calcDpi(canvW, canvH));
-      $('dpiSub').textContent = `Passend gemaakt op A3 (${canvW}×${canvH}px bij ${DPI} dpi). Inclusief 3mm afloop.`;
+      $('dpiSub').textContent = mode === 'cover'
+        ? `Vullend gemaakt op A3 (${canvW}×${canvH}px bij ${DPI} dpi). Inclusief 3mm afloop.`
+        : `Passend gemaakt op A3 (${canvW}×${canvH}px bij ${DPI} dpi). Inclusief 3mm afloop.`;
 
       // Genereer nieuwe Blob voor state.file
+      const suffix = mode === 'cover' ? '_a3vullend' : '_a3passend';
       off.toBlob(blob => {
         const origName = state.file ? state.file.name.replace(/\.[^.]+$/, '') : 'ontwerp';
-        state.file = new File([blob], origName + '_a3passend.png', {type: 'image/png'});
-        $('editorFilename').innerHTML = `<strong>${state.file.name}</strong> <span>— ${(state.file.size/1024/1024).toFixed(1)} MB</span>`;
+        state.file = new File([blob], origName + suffix + '.png', {type: 'image/png'});
+        origFile = state.file; // dit is nu de nieuwe basis voor evt. verdere rotatie
+        setFilenameLabel(state.file);
         updateButton();
       }, 'image/png');
 
-      // Feedback
-      const btn = $('btnFit');
-      btn.classList.add('applied');
-      btn.textContent = 'A3 passend ✓';
+      // Feedback op de juiste knop
+      resetFitState();
+      fitApplied = mode;
+      const btn = mode === 'cover' ? $('btnFitCover') : $('btnFitContain');
+      if(btn){
+        btn.classList.add('applied');
+        btn.textContent = mode === 'cover' ? 'Vullend op A3 ✓' : 'Passend op A3 ✓';
+      }
       const info = $('passendInfo');
-      $('passendInfoText').innerHTML =
-        `Klaar! Je ontwerp staat nu op een wit A3-canvas (${canvW}×${canvH}px, ${DPI} dpi) met 3mm afloop. ` +
-        `De beeldverhouding is intact — witte ruimte is toegevoegd waar nodig.`;
+      $('passendInfoText').innerHTML = mode === 'cover'
+        ? `Klaar! Je ontwerp vult nu het volledige A3-vlak (${canvW}×${canvH}px, ${DPI} dpi) inclusief 3mm afloop. ` +
+          `De beeldverhouding is intact — uitstekende randen zijn bijgesneden.`
+        : `Klaar! Je ontwerp staat nu op een wit A3-canvas (${canvW}×${canvH}px, ${DPI} dpi) met 3mm afloop. ` +
+          `De beeldverhouding is intact — witte ruimte is toegevoegd waar nodig.`;
       info.classList.add('visible');
     };
     newImg.src = dataUrl;
@@ -1959,13 +2319,15 @@
   // ── HANDLE FILE ────────────────────────────────────────────────────────────
   function handleFile(file) {
     if(!file) return;
-    if(file.size > 100*1024*1024) { alert('Bestand is groter dan 100 MB. Gebruik een kleiner bestand.'); return; }
+    if(file.size > 50*1024*1024) { alert('Bestand is groter dan 50 MB. Gebruik een kleiner bestand.'); return; }
     state.file = file;
+    origFile = file;
     pdfDoc = null; pdfPage = 1; rotation = 0;
+    resetFitState();
 
     $('uploadZone').style.display = 'none';
     $('editorPanel').classList.add('visible');
-    $('editorFilename').innerHTML = `<strong>${file.name}</strong> <span>— ${(file.size/1024/1024).toFixed(1)} MB</span>`;
+    setFilenameLabel(file);
     $('canvasPlaceholder').style.display = 'flex';
     $('canvasPlaceholder').textContent = 'Bestand laden...';
     $('dpiText').textContent = 'Bestand wordt geanalyseerd...';
@@ -1996,7 +2358,8 @@
   }
 
   function resetEditor() {
-    state.file = null; imgEl = null; rotation = 0; pdfDoc = null;
+    state.file = null; imgEl = null; origFile = null; rotation = 0; pdfDoc = null;
+    resetFitState();
     $('uploadZone').style.display = '';
     $('editorPanel').classList.remove('visible');
     $('pdfPageNav').classList.remove('visible');
@@ -2017,36 +2380,48 @@
   zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
   zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)handleFile(f);});
 
+  // drag & drop achterzijde
+  const zoneAchter=$('achterUploadZone');
+  if(zoneAchter){
+    zoneAchter.addEventListener('dragover',e=>{e.preventDefault();zoneAchter.classList.add('dragover');});
+    zoneAchter.addEventListener('dragleave',()=>zoneAchter.classList.remove('dragover'));
+    zoneAchter.addEventListener('drop',e=>{e.preventDefault();zoneAchter.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)handleFileAchter(f);});
+  }
+
   window.addEventListener('resize',()=>{ if(imgEl) setTimeout(drawCanvas,50); });
   function updateButton() {
     const hasFile=!!state.file, hasEmail=$('email').value.trim().includes('@');
+    const needsAchter = state.drukzijde === 'dubbel' && !state.fileAchter;
     const btn=$('orderBtn'), reason=$('btnReason');
 
-    // Stappen bijwerken
-    const s1=$('step1'), s2=$('step2'), s3=$('step3');
+    // Stappen bijwerken (1 drukzijde en 2 aantal hebben altijd een geldige standaardkeuze)
+    const s1=$('step1'), s2=$('step2'), s3=$('step3'), s4=$('step4');
     const hint=$('cardStepHint');
-    function setStep(el, state) {
-      el.className = 'step ' + state;
+    function setStep(el, st) {
+      if(!el) return;
+      el.className = 'step' + (st ? ' ' + st : '');
       const num = el.querySelector('.step-num');
-      if(state === 'done') num.innerHTML = '&#10003;';
+      if(st === 'done') num.innerHTML = '&#10003;';
       else num.innerHTML = el.dataset.n;
     }
-    s1.dataset.n='1'; s2.dataset.n='2'; s3.dataset.n='3';
+    if(s1) s1.dataset.n='1'; if(s2) s2.dataset.n='2'; if(s3) s3.dataset.n='3'; if(s4) s4.dataset.n='4';
     if(!hasFile){
-      setStep(s1,'active'); setStep(s2,''); setStep(s3,'');
-      hint&&(hint.textContent='Kies je aantal en upload je ontwerp');
+      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'active'); setStep(s4,'');
+      hint&&(hint.textContent='Upload je ontwerp om verder te gaan');
+    } else if(needsAchter){
+      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'active'); setStep(s4,'');
+      hint&&(hint.textContent='Upload ook de achterzijde van je ontwerp');
     } else if(!hasEmail){
-      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'active');
+      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'done'); setStep(s4,'active');
       hint&&(hint.textContent='Vul je gegevens in om te bestellen');
     } else {
-      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'done');
+      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'done'); setStep(s4,'done');
       hint&&(hint.textContent='');
     }
 
-    const needsAchter = state.drukzijde === 'dubbel' && !state.fileAchter;
-    if(!hasFile){btn.disabled=true;reason.textContent='Upload eerst je ontwerp (stap 2)';}
-    else if(needsAchter){btn.disabled=true;reason.textContent='Upload ook de achterzijde (stap 2b)';}
-    else if(!hasEmail){btn.disabled=true;reason.textContent='Vul je e-mailadres in (stap 3)';}
+    if(!hasFile){btn.disabled=true;reason.textContent='Upload eerst je ontwerp (stap 3)';}
+    else if(needsAchter){btn.disabled=true;reason.textContent='Upload ook de achterzijde (stap 3b)';}
+    else if(!hasEmail){btn.disabled=true;reason.textContent='Vul je e-mailadres in (stap 4)';}
     else{btn.disabled=false;reason.textContent='';}
   }
 
@@ -2056,20 +2431,127 @@
     if(!isOpen) item.classList.add('open');
   }
   async function submitOrder() {
-    const email=$('email').value.trim();
-    if(!state.file||!email.includes('@'))return;
-    const btn=$('orderBtn');
-    btn.innerHTML='<div class="spinner"></div> Verwerken...';
-    btn.disabled=true;
-    await new Promise(r=>setTimeout(r,2000));
-    const num='#PS-'+Math.floor(10000+Math.random()*90000);
-    $('successOrderNum').textContent=num;
-    $('successEmail').textContent=email;
-    $('successOverlay').classList.add('visible');
+    const email     = $('email').value.trim();
+    const firstName = $('firstName').value.trim();
+    const lastName  = $('lastName').value.trim();
+    const company   = $('company')?.value.trim() || '';
+    const phone     = $('phone')?.value.trim()   || '';
+    const notes     = $('notes')?.value.trim()   || '';
+
+    if (!state.file || !email.includes('@')) return;
+    if (state.drukzijde === 'dubbel' && !state.fileAchter) return;
+
+    const btn = $('orderBtn');
+    btn.innerHTML = '<div class="spinner"></div> Bestelling verwerken...';
+    btn.disabled = true;
+
+    const ordernummer  = 'PS-' + Math.floor(10000 + Math.random() * 90000);
+    const prijsPerStuk = tiers[state.tierIndex].price; // incl. evt. dubbelzijdig-factor
+
+    const altActief = $('altToggle')?.checked;
+    const klant = {
+      email,
+      naam:     (firstName + ' ' + lastName).trim(),
+      bedrijf:  company,
+      telefoon: phone,
+      land:     'Nederland',
+      adres: {
+        straat:   $('street')?.value.trim()   || '',
+        postcode: $('postcode')?.value.trim() || '',
+        plaats:   $('city')?.value.trim()     || '',
+        land:     $('country')?.value         || 'NL',
+      },
+      afleveradres: altActief ? {
+        bedrijf:  $('altCompany')?.value.trim()  || '',
+        straat:   $('altStreet')?.value.trim()   || '',
+        postcode: $('altPostcode')?.value.trim() || '',
+        plaats:   $('altCity')?.value.trim()     || '',
+        land:     $('altCountry')?.value         || 'NL',
+      } : null,
+    };
+
+    const bestelling = {
+      ordernummer,
+      aantal:         state.qty,
+      prijs_per_stuk: prijsPerStuk,
+      drukzijde:      state.drukzijde,
+      verzendmethode: 'verzenden',
+      verzendkosten:  0,
+      verzendland:    $('country')?.value || 'NL',
+      bestandsnaam:   state.file.name,
+      bestandsnaam_achter: state.fileAchter ? state.fileAchter.name : null,
+      opmerkingen:    notes,
+    };
+
+    const leesBase64 = file => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = e => resolve(e.target.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    try {
+      // Stap 1: bestand(en) als base64 lezen
+      btn.innerHTML = '<div class="spinner"></div> Bestand uploaden...';
+      const bestandBase64       = await leesBase64(state.file);
+      const bestandAchterBase64 = state.fileAchter ? await leesBase64(state.fileAchter) : null;
+
+      // Stap 2: order naar Gripp sturen
+      btn.innerHTML = '<div class="spinner"></div> Order verwerken...';
+      let grippData = {};
+      try {
+        const grippResp = await fetch('/.netlify/functions/gripp-order', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ klant, bestelling }),
+        });
+        grippData = await grippResp.json();
+      } catch (e) { console.error('gripp-order fout:', e); }
+
+      // Stap 3: order + bestand(en) opslaan in admin
+      let opgeslagen = false;
+      try {
+        const saveResp = await fetch('/.netlify/functions/save-order', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            ordernummer,
+            klant,
+            bestelling,
+            gripp_offerte_id: grippData.gripp_offerte_id || null,
+            bestand_data: bestandBase64,
+            bestand_naam: state.file.name,
+            bestand_type: state.file.type,
+            bestand_data_achter: bestandAchterBase64,
+            bestand_naam_achter: state.fileAchter ? state.fileAchter.name : null,
+            bestand_type_achter: state.fileAchter ? state.fileAchter.type : null,
+          }),
+        });
+        opgeslagen = saveResp.ok;
+      } catch (e) { console.error('save-order fout:', e); }
+
+      // Stap 4: bevestiging tonen (ook als Gripp fout had)
+      $('successOrderNum').textContent = '#' + ordernummer;
+      $('successEmail').textContent    = email;
+      $('successOverlay').classList.add('visible');
+
+      if (!opgeslagen) {
+        alert('Je bestelling is geplaatst, maar het uploaden van je drukbestand is niet gelukt (mogelijk te groot). ' +
+              'Mail je bestand met ordernummer #' + ordernummer + ' naar buro@extern.nl, dan gaan wij direct aan de slag.');
+      }
+
+    } catch (e) {
+      alert('Er is iets misgegaan. Probeer opnieuw of bel 072 567 00 00.');
+      btn.innerHTML = 'Bestelling plaatsen';
+      btn.disabled  = false;
+      return;
+    }
+    btn.innerHTML = 'Bestelling plaatsen';
   }
   function closeSuccess() {
     $('successOverlay').classList.remove('visible');
     resetEditor();
+    if (typeof removeFileAchter === 'function') removeFileAchter();
     ['firstName','lastName','email','phone','company','notes'].forEach(id=>$(id).value='');
     state.qty=1;state.tierIndex=0;$('qtyInput').value=1;
     highlightTier();updatePrice();updateButton();
@@ -2077,6 +2559,14 @@
   }
   updatePrice();updateButton();
 </script>
+
+<div class="mobile-orderbar" id="mobileOrderbar">
+  <div class="mob-price">
+    <span class="mob-total" id="mobTotal">€11,80</span>
+    <span class="mob-sub" id="mobSub">1 stuk &middot; incl. btw &middot; gratis verzending</span>
+  </div>
+  <button class="mob-btn" onclick="document.querySelector('.order-card').scrollIntoView({behavior:'smooth',block:'center'})">Bestellen</button>
+</div>
 
 <footer style="border-top:1px solid var(--line);padding:1.5rem 2rem;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--ink-muted);flex-wrap:wrap;gap:0.75rem;">
   <div style="display:flex;align-items:center;gap:10px;">
