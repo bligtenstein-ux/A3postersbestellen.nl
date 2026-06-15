@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /.netlify/
+
+Sitemap: https://a3postersbestellen.nl/sitemap.xml

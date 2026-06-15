@@ -11,6 +11,80 @@
 <meta property="og:description" content="A3 posters drukken vanaf €9,75. Gratis verzending, morgen in huis, betaal achteraf op factuur.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://a3postersbestellen.nl/">
+<meta property="og:site_name" content="A3postersbestellen.nl">
+<meta property="og:locale" content="nl_NL">
+<meta property="og:image" content="https://a3postersbestellen.nl/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A3 Posters drukken — snel, scherp en persoonlijk">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A3 Posters Drukken | Snel & Goedkoop | A3postersbestellen.nl">
+<meta name="twitter:description" content="A3 posters drukken vanaf €9,75. Gratis verzending, morgen in huis, betaal achteraf op factuur.">
+<meta name="twitter:image" content="https://a3postersbestellen.nl/og-image.png">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#3aaa35">
+<meta name="author" content="Buro Extern">
+<!-- Favicon (inline SVG — geen extra bestand nodig) -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233aaa35'/%3E%3Ctext x='50' y='62' font-family='Arial,sans-serif' font-size='42' font-weight='bold' fill='white' text-anchor='middle'%3EA3%3C/text%3E%3C/svg%3E">
+<!-- Structured data: LocalBusiness + Product -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "LocalBusiness",
+      "@id": "https://a3postersbestellen.nl/#business",
+      "name": "A3postersbestellen.nl",
+      "image": "https://a3postersbestellen.nl/og-image.png",
+      "description": "A3 posters drukken — snel, scherp en persoonlijk. Gratis verzending, morgen in huis, betaal achteraf.",
+      "url": "https://a3postersbestellen.nl/",
+      "telephone": "+31725670000",
+      "email": "buro@extern.nl",
+      "priceRange": "€",
+      "parentOrganization": { "@type": "Organization", "name": "Buro Extern" },
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Berenkoog 11",
+        "postalCode": "1822 BH",
+        "addressLocality": "Alkmaar",
+        "addressCountry": "NL"
+      },
+      "areaServed": ["NL", "BE"]
+    },
+    {
+      "@type": "Product",
+      "name": "A3 Poster drukken",
+      "image": "https://a3postersbestellen.nl/og-image.png",
+      "description": "A3 posters laten drukken op hoogwaardig papier. Enkel- of dubbelzijdig, kreukvrij geleverd per koker.",
+      "brand": { "@type": "Brand", "name": "A3postersbestellen.nl" },
+      "offers": {
+        "@type": "Offer",
+        "url": "https://a3postersbestellen.nl/",
+        "priceCurrency": "EUR",
+        "price": "0.47",
+        "priceValidUntil": "2026-12-31",
+        "availability": "https://schema.org/InStock",
+        "shippingDetails": {
+          "@type": "OfferShippingDetails",
+          "shippingRate": { "@type": "MonetaryAmount", "value": "0", "currency": "EUR" },
+          "shippingDestination": [
+            { "@type": "DefinedRegion", "addressCountry": "NL" },
+            { "@type": "DefinedRegion", "addressCountry": "BE" }
+          ]
+        }
+      }
+    }
+  ]
+}
+</script>
+<!-- Google Analytics 4 — vervang G-XXXXXXXXXX door je eigen GA4 meet-ID -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2534,6 +2608,16 @@
       $('successOrderNum').textContent = '#' + ordernummer;
       $('successEmail').textContent    = email;
       $('successOverlay').classList.add('visible');
+
+      // Conversie-tracking (Google Analytics / Ads) — vuurt alleen als gtag geladen is
+      if (typeof gtag === 'function') {
+        gtag('event', 'purchase', {
+          transaction_id: ordernummer,
+          value: (prijsPerStuk * state.qty),
+          currency: 'EUR',
+          items: [{ item_name: 'A3 poster', quantity: state.qty, price: prijsPerStuk }]
+        });
+      }
 
       if (!opgeslagen) {
         alert('Je bestelling is geplaatst, maar het uploaden van je drukbestand is niet gelukt (mogelijk te groot). ' +
