@@ -1,3 +1,7 @@
+// netlify/functions/save-order.js
+// Slaat orders + drukbestand(en) op in de Neon database
+// Ondersteunt nu ook dubbelzijdig drukken: achterzijde-bestand wordt mee opgeslagen
+
 const { neon } = require('@neondatabase/serverless');
 
 async function getDb() {
@@ -8,6 +12,7 @@ async function getDb() {
       klant JSONB,
       bestelling JSONB,
       gripp_offerte_id TEXT,
+      bestand_url TEXT,
       bestand_naam TEXT,
       bestand_data TEXT,
       bestand_type TEXT,
@@ -15,23 +20,42 @@ async function getDb() {
       aangemaakt TIMESTAMPTZ DEFAULT NOW()
     )
   `;
+  // Kolommen voor de achterzijde (dubbelzijdig drukken) — veilig bij bestaande tabel
+  await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS bestand_naam_achter TEXT`;
+  await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS bestand_data_achter TEXT`;
+  await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS bestand_type_achter TEXT`;
   return sql;
 }
 
 exports.handler = async (event) => {
+  // CORS — alleen eigen domein toestaan
+  const origin = event.headers?.origin || '';
+  const TOEGESTANE_HOSTS = ['https://a3postersbestellen.nl', 'https://a3posters.netlify.app'];
+  const allowOrigin = TOEGESTANE_HOSTS.find(h => origin === h) || 'https://a3postersbestellen.nl';
+
   const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
+  // Lichte bescherming: alleen verzoeken vanaf de eigen site accepteren.
+  // Blokkeert geautomatiseerd misbruik van buitenaf zonder de klant te hinderen.
+  const referer = event.headers['referer'] || '';
+  const bron    = origin || referer;
+  const isToegestaan = bron === '' || TOEGESTANE_HOSTS.some(h => bron.includes(h));
+  if (!isToegestaan) {
+    return { statusCode: 403, headers, body: JSON.stringify({ error: 'Niet toegestaan' }) };
+  }
+
   try {
     const body = JSON.parse(event.body || '{}');
     const { ordernummer, klant, bestelling, gripp_offerte_id,
-            bestand_data, bestand_naam, bestand_type } = body;
+            bestand_data, bestand_naam, bestand_type,
+            bestand_data_achter, bestand_naam_achter, bestand_type_achter } = body;
 
     if (!ordernummer) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ordernummer verplicht' }) };
 
@@ -39,7 +63,9 @@ exports.handler = async (event) => {
 
     await sql`
       INSERT INTO orders (ordernummer, klant, bestelling, gripp_offerte_id,
-                          bestand_naam, bestand_data, bestand_type, status)
+                          bestand_naam, bestand_data, bestand_type,
+                          bestand_naam_achter, bestand_data_achter, bestand_type_achter,
+                          status)
       VALUES (
         ${ordernummer},
         ${JSON.stringify(klant)},
@@ -48,6 +74,9 @@ exports.handler = async (event) => {
         ${bestand_naam || null},
         ${bestand_data || null},
         ${bestand_type || null},
+        ${bestand_naam_achter || null},
+        ${bestand_data_achter || null},
+        ${bestand_type_achter || null},
         'nieuw'
       )
       ON CONFLICT (ordernummer) DO NOTHING
