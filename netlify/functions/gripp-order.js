@@ -1,23 +1,18 @@
 // netlify/functions/gripp-order.js
 // Gripp koppeling voor a3postersbestellen.nl
-// Gebaseerd op kobaal-gripp-v22.ts — aangepast voor Netlify Functions
 //
-// Environment variables (stel in via Netlify dashboard → Site settings → Environment):
-//   GRIPP_API_TOKEN   — jouw Gripp API token
-//   ADMIN_SECRET      — zelf te kiezen geheim, admin stuurt dit mee als header
+// Environment variables (Netlify → Site settings → Environment):
+//   GRIPP_API_TOKEN — jouw Gripp API token
+//   ADMIN_SECRET    — zelf te kiezen geheim, admin stuurt dit mee als header
 
 const GRIPP_API   = 'https://api.gripp.com/public/api3.php';
-const TEMPLATE_ID = 53; // Zelfde template als Kobaal DTF
+const TEMPLATE_ID = 40; // Buro Extern sjabloon
 
-// Exacte productnaam in Gripp — zoekt op naam, niet op nummer
-// Pas aan als jullie een apart A3-posterproduct aanmaken in Gripp
-const NAAM_MAP = {
-  A3_POSTER:    'KB Dtf full color transfer high quality A3 formaat',
-  VERZENDKOSTEN:'KB Verzendkosten DTF Kobaal',
-  AFHALEN:      'KB Afhalen DTF bestelling te Alkmaar',
-};
+// Product wordt opgezocht op NUMMER (1041 = "Drukwerk"), niet op naam.
+// Dit product wordt gebruikt voor alle offerteregels (poster + eventuele korting).
+const PRODUCT_NUMMER = '1041';
 
-// Prijsstaffel (zelfde als frontend — wordt hier herberekend als backup)
+// Prijsstaffel (zelfde als frontend — backup berekening)
 const STAFFEL = [
   { min: 1,   max: 9,   prijs: 4.95 },
   { min: 10,  max: 24,  prijs: 3.95 },
@@ -47,14 +42,32 @@ async function gripp(token, calls) {
   return Array.isArray(data) ? data : [data];
 }
 
-// ── Product-IDs ophalen op naam (paginering) ────────────────────────────────
-// Identiek aan kobaal-gripp-v22: doorzoekt ALLE producten, stopt pas
-// als alle verplichte gevonden zijn of geen pagina's meer.
-async function haalProductIds(token) {
-  const ids = {};
-  const PAGE_SIZE = 250;
-  const verplicht = Object.keys(NAAM_MAP);
+// ── Product-ID ophalen op productnummer ─────────────────────────────────────
+// Eerst directe filter op product.number (snel). Als die geen resultaat of een
+// fout geeft, pagineren we door alle producten en matchen op row.number.
+async function haalProductId(token) {
+  // Strategie 1: directe filter op product.number
+  try {
+    const res = await gripp(token, [{
+      method: 'product.get',
+      params: [
+        [{ field: 'product.number', operator: 'equals', value: PRODUCT_NUMMER }],
+        { paging: { firstresult: 0, maxresults: 5 } },
+      ],
+      id: 1,
+    }]);
+    const rows = res[0]?.result?.rows ?? [];
+    if (rows.length > 0) {
+      console.log(`✓ Drukwerk gevonden via filter: id=${rows[0].id}, nummer=${rows[0].number}, naam="${rows[0].name}"`);
+      return rows[0].id;
+    }
+    console.log(`Filter op product.number=${PRODUCT_NUMMER} gaf 0 resultaten — val terug op paginering`);
+  } catch (err) {
+    console.log(`Filter op product.number gaf fout (val terug op paginering): ${err.message}`);
+  }
 
+  // Strategie 2: paginering door alle producten
+  const PAGE_SIZE = 250;
   for (let pagina = 0; pagina < 20; pagina++) {
     const offset = pagina * PAGE_SIZE;
     const res = await gripp(token, [{
@@ -72,27 +85,21 @@ async function haalProductIds(token) {
     const rows = res[0]?.result?.rows ?? [];
 
     for (const row of rows) {
-      const naam = String(row.name ?? '').trim();
-      for (const [key, zoekNaam] of Object.entries(NAAM_MAP)) {
-        if (!ids[key] && naam === zoekNaam) {
-          ids[key] = row.id;
-          console.log(`✓ ${key}: "${naam}" => id=${row.id}`);
-        }
+      const nummer = String(row.number ?? row.productnumber ?? '').trim();
+      if (nummer === PRODUCT_NUMMER) {
+        console.log(`✓ Drukwerk gevonden via paginering: id=${row.id}, nummer=${nummer}, naam="${row.name}"`);
+        return row.id;
       }
     }
 
-    if (verplicht.every(k => ids[k])) break; // Alle gevonden
-    if (rows.length < PAGE_SIZE) break;       // Laatste pagina
+    if (rows.length < PAGE_SIZE) break; // Laatste pagina
   }
 
-  for (const key of verplicht) {
-    if (!ids[key]) console.log(`✗ ${key} NIET gevonden ("${NAAM_MAP[key]}")`);
-  }
-  return ids;
+  console.log(`✗ Drukwerk product met nummer ${PRODUCT_NUMMER} NIET gevonden`);
+  return null;
 }
 
 // ── Klant zoeken of aanmaken ────────────────────────────────────────────────
-// Identiek aan kobaal-gripp-v22: eerst op KVK, dan op e-mail, dan aanmaken
 async function zoekOfMaakRelatie(token, klant) {
   // 1. Zoek op KVK
   if (klant.kvk) {
@@ -147,7 +154,7 @@ async function zoekOfMaakRelatie(token, klant) {
 // KRITIEK: product is een GETAL, niet { id: getal } — Gripp API v3 vereiste
 function maakRegel(productId, aantal, prijs, omschrijving) {
   return {
-    product:      productId,   // getal, NIET object
+    product:      productId,
     amount:       aantal,
     sellingprice: prijs,
     buyingprice:  0,
@@ -159,15 +166,15 @@ function maakRegel(productId, aantal, prijs, omschrijving) {
 }
 
 // ── Testmodus ───────────────────────────────────────────────────────────────
-// Aanroepen met { test: true } geeft terug welke producten gevonden worden
-// zonder een echte order aan te maken (zelfde als kobaal admin testknop)
 async function testVerbinding(token) {
-  const ids = await haalProductIds(token);
-  const resultaat = {};
-  for (const [key, naam] of Object.entries(NAAM_MAP)) {
-    resultaat[key] = { naam, gevonden: !!ids[key], gripp_id: ids[key] || null };
-  }
-  return resultaat;
+  const productId = await haalProductId(token);
+  return {
+    DRUKWERK_1041: {
+      nummer:   PRODUCT_NUMMER,
+      gevonden: !!productId,
+      gripp_id: productId || null,
+    },
+  };
 }
 
 // ── Hoofd handler ───────────────────────────────────────────────────────────
@@ -189,7 +196,6 @@ exports.handler = async (event) => {
   try {
     const body = JSON.parse(event.body || '{}');
 
-    // Token: uit body (admin) of uit Netlify environment variable
     const token = body.gripp_token || process.env.GRIPP_API_TOKEN || '';
     if (!token) {
       return {
@@ -219,49 +225,40 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'bestelling.aantal verplicht' }) };
     }
 
-    // ── Haal product-IDs op ────────────────────────────────────────────
-    const productIds = await haalProductIds(token);
-    if (!productIds.A3_POSTER) {
-      throw new Error(`A3 poster product "${NAAM_MAP.A3_POSTER}" niet gevonden in Gripp. Controleer de productnaam.`);
+    // ── Haal Drukwerk product-ID op ────────────────────────────────────
+    const productId = await haalProductId(token);
+    if (!productId) {
+      throw new Error(`Drukwerk product met nummer ${PRODUCT_NUMMER} niet gevonden in Gripp.`);
     }
 
     // ── Klant zoeken of aanmaken ───────────────────────────────────────
     const companyId = await zoekOfMaakRelatie(token, klant);
 
     // ── Prijs berekenen ────────────────────────────────────────────────
-    const aantal        = parseInt(bestelling.aantal);
-    const prijsPerStuk  = bestelling.prijs_per_stuk ?? getPrijsPerStuk(aantal);
-    const verzendkosten = parseFloat(bestelling.verzendkosten ?? 0);
-    const methode       = bestelling.verzendmethode ?? 'verzenden'; // 'verzenden' | 'afhalen'
-    const ordernummer   = bestelling.ordernummer || `PS-${Date.now()}`;
+    const aantal       = parseInt(bestelling.aantal);
+    const prijsPerStuk = bestelling.prijs_per_stuk ?? getPrijsPerStuk(aantal);
+    const methode      = bestelling.verzendmethode ?? 'verzenden'; // 'verzenden' | 'afhalen'
+    const ordernummer  = bestelling.ordernummer || `PS-${Date.now()}`;
 
     // ── Offerteregels bouwen ───────────────────────────────────────────
     const offerlines = [];
 
-    // Regel 1: A3 posters
+    // Regel 1: A3 posters op product 1041 (Drukwerk)
     const bestandsinfo = bestelling.bestandsnaam ? ` (bestand: ${bestelling.bestandsnaam})` : '';
     offerlines.push(maakRegel(
-      productIds.A3_POSTER,
+      productId,
       aantal,
       prijsPerStuk,
       `A3 poster full color${bestandsinfo}`,
     ));
 
-    // Regel 2: Verzendkosten of afhalen
-    const verzendKey = methode === 'afhalen' ? 'AFHALEN' : 'VERZENDKOSTEN';
-    if (productIds[verzendKey]) {
-      offerlines.push(maakRegel(
-        productIds[verzendKey],
-        1,
-        methode === 'afhalen' ? 0 : verzendkosten,
-        methode === 'afhalen' ? 'Afhalen te Alkmaar' : `Verzendkosten (${bestelling.verzendland || 'NL'})`,
-      ));
-    }
+    // Verzendkosten zijn altijd gratis — geen aparte verzendregel.
+    // Methode (verzenden/afhalen) wordt vermeld in de omschrijving hieronder.
 
-    // Regel 3: korting (negatief bedrag) — optioneel
+    // Regel 2: korting (negatief bedrag) — optioneel
     if (bestelling.korting?.bedrag > 0) {
       offerlines.push(maakRegel(
-        productIds.A3_POSTER, // Koppel korting aan hoofdproduct
+        productId,
         1,
         -Math.abs(bestelling.korting.bedrag),
         `Korting${bestelling.korting.code ? ' — ' + bestelling.korting.code : ''}`,
@@ -269,19 +266,19 @@ exports.handler = async (event) => {
     }
 
     // ── Offerte aanmaken in Gripp ──────────────────────────────────────
-    const today    = new Date().toISOString().split('T')[0];
-    const subject  = `A3 poster order ${ordernummer}`;
+    const today   = new Date().toISOString().split('T')[0];
+    const subject = `A3 poster order ${ordernummer}`;
     const descRegels = [
       `Bestelling: ${aantal}× A3 poster`,
       `Prijs p/st: €${prijsPerStuk.toFixed(2)}`,
       methode === 'afhalen'
-        ? 'Verzending: Afhalen te Alkmaar'
-        : `Verzending: €${verzendkosten.toFixed(2)} (${bestelling.verzendland || 'NL'})`,
+        ? 'Verzending: Afhalen te Alkmaar (gratis)'
+        : `Verzending: gratis (${bestelling.verzendland || 'NL'})`,
       bestelling.opmerkingen ? `Opmerking: ${bestelling.opmerkingen}` : '',
       bestelling.bestand_url ? `Bestand: ${bestelling.bestand_url}` : '',
     ].filter(Boolean).join('\n');
 
-    console.log(`Offerte aanmaken: ${offerlines.length} regels, company=${companyId}, order=${ordernummer}`);
+    console.log(`Offerte aanmaken: ${offerlines.length} regels, company=${companyId}, order=${ordernummer}, template=${TEMPLATE_ID}`);
 
     const offerteResp = await gripp(token, [{
       method: 'offer.create',
