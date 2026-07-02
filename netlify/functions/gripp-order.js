@@ -431,12 +431,10 @@ exports.handler = async (event) => {
       date:             today,
       status:           'CONCEPT',
       offerlines,
-      // Bestemming-veld: meest waarschijnlijke veldnaam eerst,
-      // fallback varianten voor het geval Gripp een andere naam gebruikt.
-      // Onbekende velden worden door Gripp genegeerd — veilig.
-      deliveryaddress:  bestemmingText,
-      destination:      bestemmingText,
-      shippingaddress:  bestemmingText,
+      // Bestemming-veld — bevestigd via Gripp's officiële API-documentatie:
+      // het veld heet "workdeliveraddress" (niet deliveryaddress/destination
+      // zoals eerder gegokt).
+      workdeliveraddress: bestemmingText,
     };
 
     console.log(`[gripp-order] Offerte aanmaken: ${offerlines.length} regels, company=${companyId}, order=${ordernummer}, template=${TEMPLATE_ID}`);
