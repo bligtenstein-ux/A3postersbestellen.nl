@@ -377,6 +377,7 @@ function renderOrders() {
       <td style="font-size:11px">${datumFmt(o.aangemaakt)}</td>
       <td onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-sm" onclick="openStatusModal('${o.ordernummer}','${o.status}')">Status →</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red);margin-top:3px" onclick="bevestigVerwijderen('${o.ordernummer}')">🗑 Verwijderen</button>
       </td>
     </tr>
     <tr class="detail-row" id="detail-${o.ordernummer}">
@@ -533,6 +534,31 @@ async function slaStatusOp() {
 
 function sluitModal() { $('moStatus').classList.remove('open'); }
 document.querySelectorAll('.mo').forEach(m => m.addEventListener('click', e => { if(e.target===m) sluitModal(); }));
+
+// ── VERWIJDEREN ───────────────────────────────────────────────
+async function bevestigVerwijderen(ordernummer) {
+  const order = alleOrders.find(o => o.ordernummer === ordernummer);
+  const grippInfo = order?.gripp_offerte_id
+    ? `\n\nLet op: de Gripp-offerte #${order.gripp_offerte_id} wordt hier NIET door verwijderd — alleen de order en het bestand uit deze admin.`
+    : '';
+  if (!confirm(`Order ${ordernummer} definitief verwijderen?\n\nDit kan niet ongedaan worden gemaakt. Het bestand en alle ordergegevens verdwijnen uit de admin.${grippInfo}`)) return;
+
+  showToast(`⏳ ${ordernummer} verwijderen…`);
+  try {
+    const resp = await fetch('/.netlify/functions/get-orders?action=delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': adminSecret },
+      body: JSON.stringify({ ordernummer }),
+    });
+    const data = await resp.json();
+    if (data.success) {
+      showToast(`✓ ${ordernummer} verwijderd`, 'ok');
+      await laadAlles();
+    } else {
+      showToast('Verwijderen mislukt: ' + (data.error || 'onbekende fout'), 'er');
+    }
+  } catch(e) { showToast('Verbindingsfout: ' + e.message, 'er'); }
+}
 
 // ── NAVIGATIE ─────────────────────────────────────────────────
 function showView(naam, el) {
