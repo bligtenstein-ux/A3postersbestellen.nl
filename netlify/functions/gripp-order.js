@@ -271,17 +271,11 @@ function bewerkingInstructies(bewerking) {
 }
 
 // ── Beschrijving voor de offerte ────────────────────────────────────────────
-// Bestemming staat helemaal bovenaan zodat je bij het openen van de offerte
-// meteen ziet waar de order heen moet.
+// De bestemming staat al apart in het Gripp "Bestemming"-veld
+// (workdeliveraddress) — dus die wordt hier niet meer herhaald.
 function bouwOfferteBeschrijving({ aantal, prijsPerStuk, methode, bestelling,
                                     klant, adresInfo, bestemming }) {
   const regels = [
-    '── BESTEMMING (afleveradres) ──',
-    formatBestemming(bestemming),
-    bestemming.isAfwijkend
-      ? '(afwijkend afleveradres)'
-      : '(zelfde als factuuradres)',
-    '',
     `Bestelling: ${aantal}× A3 poster`,
     `Prijs p/st: €${prijsPerStuk.toFixed(2)}`,
     bestelling.drukzijde ? `Drukzijde: ${bestelling.drukzijde}` : '',
