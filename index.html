@@ -1942,7 +1942,7 @@
       <div class="order-meta">Bevestiging verstuurd naar <strong id="successEmail">jouw e-mail</strong></div>
     </div>
     <p style="margin-bottom:1.5rem">Je poster wordt morgen bezorgd per koker. Vragen? Bel <strong>072 567 00 00</strong> of mail <strong>print@extern.nl</strong>.</p>
-    <button class="btn-new" onclick="closeSuccess()">Nieuwe bestelling plaatsen</button>
+    <button class="btn-new" onclick="closeSuccess()">Afronden en venster sluiten</button>
   </div>
 </div>
 
@@ -2566,6 +2566,8 @@
     state.qty=1;state.tierIndex=0;$('qtyInput').value=1;
     highlightTier();updatePrice();updateButton();
     $('orderBtn').textContent='Bestelling plaatsen';
+    // Venster sluiten = terug naar boven (home) op deze singlepage site
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   updatePrice();updateButton();
 </script>
