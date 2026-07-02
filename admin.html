@@ -124,6 +124,10 @@ html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--s
 .md p { font-size: 12px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
 .md-field label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 5px; }
 .md-field select { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 13px; outline: none; }
+.md-field input { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 13px; outline: none; margin-bottom: 0; }
+.md-field input:focus { border-color: var(--green); }
+.md-field { margin-bottom: 14px; }
+.user-badge { font-size: 11px; color: var(--muted); margin-right: 12px; }
 .md-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
 
 .detail-row { display: none; }
@@ -138,9 +142,17 @@ html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--s
     <div class="login-logo">A3</div>
     <h2>Admin inloggen</h2>
     <p>A3postersbestellen.nl — Beheer</p>
-    <input type="password" id="secretInput" placeholder="Admin wachtwoord" onkeydown="if(event.key==='Enter')login()">
+    <input type="email" id="emailInput" placeholder="E-mailadres" onkeydown="if(event.key==='Enter')login()">
+    <input type="password" id="wachtwoordInput" placeholder="Wachtwoord" onkeydown="if(event.key==='Enter')login()">
     <button onclick="login()">Inloggen</button>
     <div id="loginErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:10px"></div>
+    <div style="text-align:center;margin-top:16px">
+      <a href="#" onclick="toonNoodtoegang();return false;" id="noodtoegangLink" style="font-size:11px;color:var(--muted);text-decoration:underline">Noodtoegang met admin-wachtwoord</a>
+    </div>
+    <div id="noodtoegangBlock" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <input type="password" id="secretInput" placeholder="Admin wachtwoord (noodtoegang)" onkeydown="if(event.key==='Enter')loginNoodtoegang()">
+      <button onclick="loginNoodtoegang()" style="background:var(--dark)">Noodtoegang gebruiken</button>
+    </div>
   </div>
 </div>
 
@@ -153,6 +165,7 @@ html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--s
       <div class="admin-badge">Admin</div>
     </div>
     <div class="topbar-right">
+      <span class="user-badge" id="huidigeGebruikerLabel"></span>
       <a href="/" class="btn-logout">→ Site</a>
       <button class="btn-logout" onclick="uitloggen()">Uitloggen</button>
     </div>
@@ -165,6 +178,7 @@ html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--s
       <div class="nav-item" onclick="showView('orders',this)">📦 Orders <span class="nav-badge" id="navOrdersCnt">0</span></div>
       <div class="nav-item" onclick="showView('bestanden',this)">🖼 Bestanden</div>
       <div class="nav-label" style="margin-top:12px">Systeem</div>
+      <div class="nav-item" onclick="showView('gebruikers',this)">👥 Gebruikers</div>
       <div class="nav-item" onclick="showView('instellingen',this)">⚙️ Instellingen</div>
     </div>
 
@@ -235,6 +249,20 @@ html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--s
         </div>
       </div>
 
+      <!-- GEBRUIKERS -->
+      <div class="view" id="view-gebruikers">
+        <div class="page-header">
+          <div><div class="page-title">Gebruikers</div><div class="page-sub">Wie heeft toegang tot dit admin panel</div></div>
+          <button class="btn btn-green" onclick="openGebruikerModal()">+ Nieuwe gebruiker</button>
+        </div>
+        <div class="section">
+          <table class="tbl">
+            <thead><tr><th>Naam</th><th>E-mail</th><th>Aangemaakt</th><th>Laatst ingelogd</th><th>Acties</th></tr></thead>
+            <tbody id="gebruikersLijst"><tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Laden…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -262,47 +290,137 @@ html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--s
   </div>
 </div>
 
+<!-- GEBRUIKER MODAL -->
+<div class="mo" id="moGebruiker">
+  <div class="md">
+    <h3 id="moGebruikerTitel">Nieuwe gebruiker</h3>
+    <input type="hidden" id="moGebruikerId">
+    <div class="md-field"><label>Naam</label>
+      <input type="text" id="moGebruikerNaam" placeholder="Bijv. Bart-Jan">
+    </div>
+    <div class="md-field"><label>E-mailadres</label>
+      <input type="email" id="moGebruikerEmail" placeholder="naam@extern.nl">
+    </div>
+    <div class="md-field"><label id="moGebruikerWwLabel">Wachtwoord</label>
+      <input type="password" id="moGebruikerWachtwoord" placeholder="Minstens 8 tekens">
+    </div>
+    <div id="moGebruikerErr" style="color:var(--red);font-size:12px;margin-top:-8px;margin-bottom:8px"></div>
+    <div class="md-actions">
+      <button class="btn btn-ghost" onclick="sluitGebruikerModal()">Annuleren</button>
+      <button class="btn btn-green" onclick="slaGebruikerOp()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 const $ = id => document.getElementById(id);
-let adminSecret = '';
+let adminSecret = '';       // alleen gezet bij noodtoegang
+let sessionToken = '';      // alleen gezet bij normale login (e-mail + wachtwoord)
+let huidigeGebruiker = null;
 let alleOrders = [];
 let huidigTab = 'alle';
 
+// ── AUTH HEADERS ──────────────────────────────────────────────
+// Alle API-aanroepen gebruiken deze helper zodat zowel noodtoegang
+// (X-Admin-Secret) als een normale sessie (X-Session-Token) werkt.
+function authHeaders(extra = {}) {
+  if (sessionToken) return { ...extra, 'X-Session-Token': sessionToken };
+  if (adminSecret)  return { ...extra, 'X-Admin-Secret': adminSecret };
+  return extra;
+}
+
 // ── LOGIN ─────────────────────────────────────────────────────
 async function login() {
+  const email = $('emailInput').value.trim();
+  const wachtwoord = $('wachtwoordInput').value;
+  if (!email || !wachtwoord) return;
+  $('loginErr').textContent = '';
+
+  try {
+    const resp = await fetch('/.netlify/functions/admin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, wachtwoord }),
+    });
+    const data = await resp.json();
+    if (!data.success) {
+      $('loginErr').textContent = data.error || 'Inloggen mislukt';
+      return;
+    }
+    sessionToken = data.token;
+    huidigeGebruiker = data.gebruiker;
+    sessionStorage.setItem('session_token', sessionToken);
+    sessionStorage.setItem('huidige_gebruiker', JSON.stringify(huidigeGebruiker));
+    toonApp();
+  } catch(e) {
+    $('loginErr').textContent = 'Verbindingsfout: ' + e.message;
+  }
+}
+
+function toonNoodtoegang() {
+  $('noodtoegangBlock').style.display = 'block';
+  $('noodtoegangLink').style.display = 'none';
+}
+
+async function loginNoodtoegang() {
   const secret = $('secretInput').value.trim();
   if (!secret) return;
-  // Test of secret klopt door een API call te doen
-  const resp = await fetch('/.netlify/functions/get-orders?action=list', {
-    headers: { 'X-Admin-Secret': secret }
-  });
-  if (resp.status === 401) {
-    $('loginErr').textContent = 'Onjuist wachtwoord';
-    return;
+  $('loginErr').textContent = '';
+
+  try {
+    const resp = await fetch('/.netlify/functions/admin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret }),
+    });
+    const data = await resp.json();
+    if (!data.success) {
+      $('loginErr').textContent = data.error || 'Onjuist wachtwoord';
+      return;
+    }
+    adminSecret = secret;
+    sessionStorage.setItem('admin_secret', secret);
+    toonApp();
+  } catch(e) {
+    $('loginErr').textContent = 'Verbindingsfout: ' + e.message;
   }
-  adminSecret = secret;
-  sessionStorage.setItem('admin_secret', secret);
+}
+
+function toonApp() {
   $('loginScreen').style.display = 'none';
   $('app').classList.add('visible');
+  const label = $('huidigeGebruikerLabel');
+  if (label) label.textContent = huidigeGebruiker ? (huidigeGebruiker.naam || huidigeGebruiker.email) : 'Noodtoegang';
   laadAlles();
 }
 
 function uitloggen() {
   sessionStorage.removeItem('admin_secret');
+  sessionStorage.removeItem('session_token');
+  sessionStorage.removeItem('huidige_gebruiker');
   location.reload();
 }
 
-// Auto-login als secret in sessie zit
+// Auto-login als sessie of noodtoegang-secret in sessionStorage zit
 window.addEventListener('load', () => {
-  const saved = sessionStorage.getItem('admin_secret');
-  if (saved) { $('secretInput').value = saved; login(); }
+  const savedToken     = sessionStorage.getItem('session_token');
+  const savedSecret    = sessionStorage.getItem('admin_secret');
+  const savedGebruiker = sessionStorage.getItem('huidige_gebruiker');
+  if (savedToken) {
+    sessionToken = savedToken;
+    huidigeGebruiker = savedGebruiker ? JSON.parse(savedGebruiker) : null;
+    toonApp();
+  } else if (savedSecret) {
+    adminSecret = savedSecret;
+    toonApp();
+  }
 });
 
 // ── DATA ──────────────────────────────────────────────────────
 async function apiFetch(path) {
-  const resp = await fetch(path, { headers: { 'X-Admin-Secret': adminSecret } });
+  const resp = await fetch(path, { headers: authHeaders() });
   return resp.json();
 }
 
@@ -450,7 +568,7 @@ async function downloadBestand(key, naam, zijde = 'voor') {
   showToast('Bestand downloaden…');
   try {
     const resp = await fetch(`/.netlify/functions/get-bestand?ordernummer=${encodeURIComponent(key)}&zijde=${encodeURIComponent(zijde)}`, {
-      headers: { 'X-Admin-Secret': adminSecret }
+      headers: authHeaders()
     });
     if (!resp.ok) throw new Error('Download mislukt');
     const blob = await resp.blob();
@@ -480,7 +598,7 @@ async function stuurNaarGripp(ordernummer) {
       // Sla gripp_offerte_id op
       await fetch('/.netlify/functions/get-orders?action=update_status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': adminSecret },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ ordernummer, status: order.status, gripp_offerte_id: data.gripp_offerte_id }),
       });
       showToast(`✓ Gripp offerte #${data.gripp_offerte_id} aangemaakt`, 'ok');
@@ -524,7 +642,7 @@ async function slaStatusOp() {
   const status = $('moNieuweStatus').value;
   await fetch('/.netlify/functions/get-orders?action=update_status', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': adminSecret },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ ordernummer: nr, status }),
   });
   sluitModal();
@@ -547,7 +665,7 @@ async function bevestigVerwijderen(ordernummer) {
   try {
     const resp = await fetch('/.netlify/functions/get-orders?action=delete', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': adminSecret },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ ordernummer }),
     });
     const data = await resp.json();
@@ -566,6 +684,120 @@ function showView(naam, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   $('view-' + naam)?.classList.add('active');
   if (el) el.classList.add('active');
+  if (naam === 'gebruikers') laadGebruikers();
+}
+
+// ── GEBRUIKERS ────────────────────────────────────────────────
+let alleGebruikers = [];
+
+async function laadGebruikers() {
+  try {
+    const resp = await fetch('/.netlify/functions/admin-users?action=list', { headers: authHeaders() });
+    const data = await resp.json();
+    alleGebruikers = data.users || [];
+    renderGebruikers();
+  } catch(e) { showToast('Gebruikers laden mislukt: ' + e.message, 'er'); }
+}
+
+function renderGebruikers() {
+  $('gebruikersLijst').innerHTML = alleGebruikers.map(u => `
+    <tr>
+      <td>${u.naam || '—'}${huidigeGebruiker && huidigeGebruiker.email === u.email ? ' <span class="badge badge-green">jij</span>' : ''}</td>
+      <td>${u.email}</td>
+      <td style="font-size:11px">${datumFmt(u.aangemaakt)}</td>
+      <td style="font-size:11px">${u.laatst_ingelogd ? datumFmt(u.laatst_ingelogd) : '<span style="color:var(--muted)">Nog niet ingelogd</span>'}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openGebruikerModal(${u.id})">Bewerken</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="verwijderGebruiker(${u.id}, '${(u.email||'').replace(/'/g,"\\'")}')">🗑</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Nog geen gebruikers</td></tr>';
+}
+
+function openGebruikerModal(id = null) {
+  $('moGebruikerErr').textContent = '';
+  if (id) {
+    const u = alleGebruikers.find(x => x.id === id);
+    if (!u) return;
+    $('moGebruikerTitel').textContent = 'Gebruiker bewerken';
+    $('moGebruikerId').value = u.id;
+    $('moGebruikerNaam').value = u.naam || '';
+    $('moGebruikerEmail').value = u.email;
+    $('moGebruikerWwLabel').textContent = 'Nieuw wachtwoord (optioneel)';
+    $('moGebruikerWachtwoord').placeholder = 'Laat leeg om ongewijzigd te laten';
+    $('moGebruikerWachtwoord').value = '';
+  } else {
+    $('moGebruikerTitel').textContent = 'Nieuwe gebruiker';
+    $('moGebruikerId').value = '';
+    $('moGebruikerNaam').value = '';
+    $('moGebruikerEmail').value = '';
+    $('moGebruikerWwLabel').textContent = 'Wachtwoord';
+    $('moGebruikerWachtwoord').placeholder = 'Minstens 8 tekens';
+    $('moGebruikerWachtwoord').value = '';
+  }
+  $('moGebruiker').classList.add('open');
+}
+
+function sluitGebruikerModal() { $('moGebruiker').classList.remove('open'); }
+
+async function slaGebruikerOp() {
+  const id = $('moGebruikerId').value;
+  const naam = $('moGebruikerNaam').value.trim();
+  const email = $('moGebruikerEmail').value.trim();
+  const wachtwoord = $('moGebruikerWachtwoord').value;
+
+  if (!email || !email.includes('@')) {
+    $('moGebruikerErr').textContent = 'Vul een geldig e-mailadres in';
+    return;
+  }
+  if (!id && wachtwoord.length < 8) {
+    $('moGebruikerErr').textContent = 'Wachtwoord moet minstens 8 tekens zijn';
+    return;
+  }
+  if (id && wachtwoord && wachtwoord.length < 8) {
+    $('moGebruikerErr').textContent = 'Wachtwoord moet minstens 8 tekens zijn';
+    return;
+  }
+
+  const actie = id ? 'update' : 'create';
+  const payload = id
+    ? { id: parseInt(id), naam, email, ...(wachtwoord ? { wachtwoord } : {}) }
+    : { naam, email, wachtwoord };
+
+  try {
+    const resp = await fetch(`/.netlify/functions/admin-users?action=${actie}`, {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!data.success) {
+      $('moGebruikerErr').textContent = data.error || 'Opslaan mislukt';
+      return;
+    }
+    sluitGebruikerModal();
+    showToast(id ? '✓ Gebruiker bijgewerkt' : '✓ Gebruiker aangemaakt', 'ok');
+    await laadGebruikers();
+  } catch(e) {
+    $('moGebruikerErr').textContent = 'Verbindingsfout: ' + e.message;
+  }
+}
+
+async function verwijderGebruiker(id, email) {
+  if (!confirm(`Gebruiker ${email} verwijderen? Deze persoon kan dan niet meer inloggen.`)) return;
+  try {
+    const resp = await fetch('/.netlify/functions/admin-users?action=delete', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ id }),
+    });
+    const data = await resp.json();
+    if (data.success) {
+      showToast('✓ Gebruiker verwijderd', 'ok');
+      await laadGebruikers();
+    } else {
+      showToast('Verwijderen mislukt: ' + (data.error || ''), 'er');
+    }
+  } catch(e) { showToast('Verbindingsfout: ' + e.message, 'er'); }
 }
 
 // ── HELPERS ───────────────────────────────────────────────────
