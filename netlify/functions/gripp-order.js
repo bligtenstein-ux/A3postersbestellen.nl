@@ -48,35 +48,55 @@ async function gripp(token, calls) {
 }
 
 // ── Defensieve adres-extractie ──────────────────────────────────────────────
+// BELANGRIJK: de frontend stuurt klant.adres als GENEST OBJECT:
+//   { straat: '...', postcode: '...', plaats: '...', land: '...' }
+// Eerdere versie behandelde klant.adres als platte string, wat "[object
+// Object]" in Gripp opleverde. Deze versie leest het geneste object correct
+// uit, met fallbacks voor het geval een andere aanroeper wél platte velden
+// of een kant-en-klare string stuurt.
 function extractAdres(klant = {}) {
-  const straat  = klant.straat || klant.straatnaam || klant.street || '';
-  const huisnr  = klant.huisnummer || klant.nummer  || klant.housenumber || '';
-  const adres   = klant.adres || klant.address || `${straat} ${huisnr}`.trim();
+  const nested = (klant.adres && typeof klant.adres === 'object') ? klant.adres : null;
+  const adresIsString = typeof klant.adres === 'string' ? klant.adres : null;
+
+  const straat = (nested && (nested.straat || nested.straatnaam || nested.street))
+              || klant.straat || klant.straatnaam || klant.street || '';
+
+  const adres = adresIsString
+             || (nested && (nested.adres || nested.address))
+             || klant.address
+             || straat; // "straat" bevat op deze site al "Straat en huisnummer" samen
+
   return {
     adres,
-    postcode: klant.postcode || klant.zipcode || klant.postalcode || '',
-    stad:     klant.stad || klant.plaats || klant.city || '',
-    land:     klant.land || klant.country || 'Nederland',
+    postcode: (nested && (nested.postcode || nested.zipcode || nested.postalcode))
+           || klant.postcode || klant.zipcode || klant.postalcode || '',
+    stad:     (nested && (nested.stad || nested.plaats || nested.city))
+           || klant.stad || klant.plaats || klant.city || '',
+    land:     (nested && (nested.land || nested.country))
+           || klant.land || klant.country || 'Nederland',
   };
 }
 
+// De frontend stuurt het afwijkend afleveradres als klant.afleveradres
+// (genest object, zonder underscore). Fallbacks voor andere naamgeving
+// blijven staan voor het geval dat ooit verandert.
 function extractAfleveradres(body = {}) {
-  const a = body.bestelling?.aflever_adres
+  const klant = body.klant || {};
+  const a = klant.afleveradres
+         || klant.aflever_adres
+         || klant.bezorgadres
+         || body.bestelling?.aflever_adres
          || body.bestelling?.bezorgadres
          || body.bestelling?.leveradres
-         || body.klant?.aflever_adres
-         || body.klant?.bezorgadres
          || null;
   if (!a || typeof a !== 'object') return null;
 
-  const straat = a.straat || a.straatnaam || '';
-  const huisnr = a.huisnummer || a.nummer || '';
-  const adres  = a.adres || a.address || `${straat} ${huisnr}`.trim();
-  if (!adres) return null;
+  const straat = a.straat || a.straatnaam || a.address || '';
+  if (!straat) return null; // leeg object (bv. toggle uit) telt niet als afwijkend
 
   return {
-    naam:     a.naam || a.name || '',
-    adres,
+    naam:     a.bedrijf || a.naam || a.name || '',
+    adres:    straat,
     postcode: a.postcode || a.zipcode || '',
     stad:     a.stad || a.plaats || a.city || '',
     land:     a.land || a.country || 'Nederland',
@@ -232,6 +252,24 @@ function maakRegel(productId, aantal, prijs, omschrijving) {
   };
 }
 
+// ── Bewerkingsinstructies (rotatie / passend / vullend) ────────────────────
+// Het originele bestand wordt ongewijzigd doorgegeven. Deze instructies
+// vertellen de drukker wat de klant heeft aangevraagd voor de opmaak.
+function bewerkingInstructies(bewerking) {
+  if (!bewerking || typeof bewerking !== 'object') return [];
+  const parts = [];
+  if (bewerking.rotatie && bewerking.rotatie !== 0) {
+    parts.push(`Rotatie: ${bewerking.rotatie}°`);
+  }
+  if (bewerking.fit_mode === 'contain') {
+    parts.push('Passend op A3 (witruimte rondom, verhouding behouden)');
+  } else if (bewerking.fit_mode === 'cover') {
+    parts.push('Vullend op A3 (afsnijding aan randen, verhouding behouden)');
+  }
+  if (parts.length === 0) return [];
+  return ['', '── DRUKINSTRUCTIES ──', ...parts];
+}
+
 // ── Beschrijving voor de offerte ────────────────────────────────────────────
 // Bestemming staat helemaal bovenaan zodat je bij het openen van de offerte
 // meteen ziet waar de order heen moet.
@@ -247,6 +285,9 @@ function bouwOfferteBeschrijving({ aantal, prijsPerStuk, methode, bestelling,
     `Bestelling: ${aantal}× A3 poster`,
     `Prijs p/st: €${prijsPerStuk.toFixed(2)}`,
     bestelling.drukzijde ? `Drukzijde: ${bestelling.drukzijde}` : '',
+    // Bewerkingsinstructies (rotatie / passend / vullend) — het originele
+    // bestand is ongewijzigd, deze instructies moeten bij druk worden toegepast.
+    ...bewerkingInstructies(bestelling.bewerking),
     '',
     '── Klant ──',
     klant.bedrijf  ? `Bedrijf: ${klant.bedrijf}`   : '',
