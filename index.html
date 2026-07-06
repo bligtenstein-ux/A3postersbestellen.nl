@@ -419,7 +419,7 @@
 
   .specs-row {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 6px;
     margin-bottom: 1.75rem;
   }
@@ -1736,6 +1736,7 @@
 
     <div class="specs-row">
       <div class="spec-box"><div class="spec-label">Formaat</div><div class="spec-val">297 × 420 mm</div></div>
+      <div class="spec-box"><div class="spec-label">Papiersoort</div><div class="spec-val">170 g Gloss MC</div></div>
       <div class="spec-box"><div class="spec-label">Drukwerk</div><div class="spec-val">Digitaal gedrukt</div></div>
       <div class="spec-box"><div class="spec-label">Verpakking</div><div class="spec-val">Per koker bezorgd</div></div>
       <div class="spec-box"><div class="spec-label">Levertijd</div><div class="spec-val">Voor 11:00 = morgen</div></div>
@@ -1942,7 +1943,7 @@
       <div class="order-meta">Bevestiging verstuurd naar <strong id="successEmail">jouw e-mail</strong></div>
     </div>
     <p style="margin-bottom:1.5rem">Je poster wordt morgen bezorgd per koker. Vragen? Bel <strong>072 567 00 00</strong> of mail <strong>print@extern.nl</strong>.</p>
-    <button class="btn-new" onclick="closeSuccess()">Afronden en venster sluiten</button>
+    <button class="btn-new" onclick="closeSuccess()">Nieuwe bestelling plaatsen</button>
   </div>
 </div>
 
@@ -2151,11 +2152,7 @@
     const rotated = rotation === 90 || rotation === 270;
     const srcW = rotated ? imgEl.naturalHeight : imgEl.naturalWidth;
     const srcH = rotated ? imgEl.naturalWidth  : imgEl.naturalHeight;
-    // 'cover' = vullend (Math.max, randen kunnen buiten beeld vallen)
-    // anders  = passend / default (Math.min, witruimte rondom)
-    const scale = fitApplied === 'cover'
-      ? Math.max(cw/srcW, ch/srcH)
-      : Math.min(cw/srcW, ch/srcH);
+    const scale = Math.min(cw/srcW, ch/srcH);
     const dw = srcW*scale, dh = srcH*scale;
     const dx = (cw-dw)/2, dy = (ch-dh)/2;
 
@@ -2170,71 +2167,126 @@
 
   function rotateImage(dir = 1) {
     rotation = (rotation + (dir === -1 ? 270 : 90)) % 360;
-    // Fit-state blijft actief — rotatie en passend/vullend kunnen samen
-    // als instructie meegestuurd worden. Alleen bij terugkeer naar 0°
-    // en geen fit-modus is er niets te instrueren.
+    resetFitState();
 
-    // Preview updaten
     if(pdfDoc) {
+      // PDF-preview updaten met nieuwe rotatie. Het originele PDF-bestand
+      // blijft ongewijzigd — de rotatie-instructie gaat als metadata mee
+      // naar de drukker.
       renderPdfPage(pdfPage);
-    } else if(imgEl) {
-      drawCanvas();
+      return;
+    }
+
+    drawCanvas();
+    if(imgEl){
       const rotated = rotation===90||rotation===270;
       updateDpiMeter(calcDpi(rotated?imgEl.naturalHeight:imgEl.naturalWidth, rotated?imgEl.naturalWidth:imgEl.naturalHeight));
     }
-
-    // Info-tekst tonen zolang er een bewerking actief is
-    updateBewerkingInfo();
-  }
-
-  // Toon of verberg de instructie-info afhankelijk van rotatie/fit-modus.
-  // Rotatie en passend/vullend worden als METADATA meegestuurd; het originele
-  // bestand blijft ongewijzigd (belangrijk voor drukkwaliteit, m.n. PDF).
-  function updateBewerkingInfo() {
-    const info = $('passendInfo');
-    if(!info) return;
-    const parts = [];
-    if(rotation !== 0) parts.push('rotatie ' + rotation + '°');
-    if(fitApplied === 'contain') parts.push('passend op A3');
-    if(fitApplied === 'cover')   parts.push('vullend op A3');
-    if(parts.length === 0) {
-      info.classList.remove('visible');
-      return;
-    }
-    $('passendInfoText').innerHTML =
-      '<strong>Instructies voor drukwerk:</strong> ' + parts.join(' + ') + '. ' +
-      'Je originele bestand wordt ongewijzigd doorgegeven aan de drukkerij — ' +
-      'zonder kwaliteitsverlies.';
-    info.classList.add('visible');
+    // Rotatie wordt NIET meer in het bestand gebakken. Het originele bestand
+    // blijft state.file — de drukker ziet de rotatie-instructie via de
+    // metadata die met de order wordt meegestuurd.
+    updateButton();
   }
 
   function maakPassend(mode = 'contain') {
     if(!imgEl) return;
 
-    // Klik op dezelfde knop = deselecteren
-    if(fitApplied === mode) {
+    // A3 met 3mm afloop aan alle kanten = 303 x 426mm
+    // Bij 200 dpi: 303/25.4*200 ≈ 2386 x 3354 px (werkbaar en snel)
+    const DPI = 200;
+    const MM_TO_PX = DPI / 25.4;
+    const A3_W_MM = 303; // 297 + 2x3mm afloop
+    const A3_H_MM = 426; // 420 + 2x3mm afloop
+    const canvW = Math.round(A3_W_MM * MM_TO_PX); // 2386
+    const canvH = Math.round(A3_H_MM * MM_TO_PX); // 3354
+
+    // Bepaal bronafmetingen (rekening houdend met rotatie)
+    const rotated = rotation === 90 || rotation === 270;
+    const srcW = rotated ? imgEl.naturalHeight : imgEl.naturalWidth;
+    const srcH = rotated ? imgEl.naturalWidth  : imgEl.naturalHeight;
+
+    let scale;
+    if(mode === 'cover') {
+      // Vullend: schaal zo dat het volledige afloopvlak gevuld is — randen worden bijgesneden
+      scale = Math.max(canvW / srcW, canvH / srcH);
+    } else {
+      // Passend: binnen 291 x 414mm (3mm marge binnen de snijlijn) met witruimte
+      const innerW = Math.round(291 * MM_TO_PX);
+      const innerH = Math.round(414 * MM_TO_PX);
+      scale = Math.min(innerW / srcW, innerH / srcH);
+    }
+    const dw = Math.round(srcW * scale);
+    const dh = Math.round(srcH * scale);
+    const dx = Math.round((canvW - dw) / 2);
+    const dy = Math.round((canvH - dh) / 2);
+
+    // Teken op offscreen canvas
+    const off = document.createElement('canvas');
+    off.width  = canvW;
+    off.height = canvH;
+    const ctx = off.getContext('2d');
+
+    // Witte achtergrond
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvW, canvH);
+
+    // Afbeelding gecentreerd (met rotatie)
+    ctx.save();
+    ctx.translate(dx + dw/2, dy + dh/2);
+    ctx.rotate(rotation * Math.PI / 180);
+    const drawW = rotated ? dh : dw;
+    const drawH = rotated ? dw : dh;
+    ctx.drawImage(imgEl, -drawW/2, -drawH/2, drawW, drawH);
+    ctx.restore();
+
+    // Maak nieuw Image-element van het resultaat
+    const dataUrl = off.toDataURL('image/png');
+    const newImg = new Image();
+    newImg.onload = () => {
+      imgEl = newImg;
+      rotation = 0; // rotatie is nu definitief verwerkt
+
+      // BUGFIX: na passend/vullend maken is het resultaat een afbeelding —
+      // de PDF-staat moet weg, anders gooit roteren het resultaat weer overboord
+      pdfDoc = null;
+      $('pdfPageNav').classList.remove('visible');
+
+      // Update preview
+      drawCanvas();
+
+      // Herbereken DPI op basis van het nieuwe canvas
+      updateDpiMeter(calcDpi(canvW, canvH));
+      $('dpiSub').textContent = mode === 'cover'
+        ? `Vullend gemaakt op A3 (${canvW}×${canvH}px bij ${DPI} dpi). Inclusief 3mm afloop.`
+        : `Passend gemaakt op A3 (${canvW}×${canvH}px bij ${DPI} dpi). Inclusief 3mm afloop.`;
+
+      // Genereer nieuwe Blob voor state.file
+      const suffix = mode === 'cover' ? '_a3vullend' : '_a3passend';
+      off.toBlob(blob => {
+        const origName = state.file ? state.file.name.replace(/\.[^.]+$/, '') : 'ontwerp';
+        state.file = new File([blob], origName + suffix + '.png', {type: 'image/png'});
+        origFile = state.file; // dit is nu de nieuwe basis voor evt. verdere rotatie
+        setFilenameLabel(state.file);
+        updateButton();
+      }, 'image/png');
+
+      // Feedback op de juiste knop
       resetFitState();
-      if(pdfDoc) { renderPdfPage(pdfPage); } else { drawCanvas(); }
-      updateBewerkingInfo();
-      return;
-    }
-
-    // Nieuwe fit-modus instellen
-    resetFitState();
-    fitApplied = mode;
-
-    // Knop-styling
-    const btn = mode === 'cover' ? $('btnFitCover') : $('btnFitContain');
-    if(btn) {
-      btn.classList.add('applied');
-      btn.textContent = mode === 'cover' ? 'Vullend op A3 ✓' : 'Passend op A3 ✓';
-    }
-
-    // Preview verversen met nieuwe fit-modus
-    if(pdfDoc) { renderPdfPage(pdfPage); } else { drawCanvas(); }
-
-    // Instructie-info tonen (rotatie + fit worden samen weergegeven)
-    updateBewerkingInfo();
+      fitApplied = mode;
+      const btn = mode === 'cover' ? $('btnFitCover') : $('btnFitContain');
+      if(btn){
+        btn.classList.add('applied');
+        btn.textContent = mode === 'cover' ? 'Vullend op A3 ✓' : 'Passend op A3 ✓';
+      }
+      const info = $('passendInfo');
+      $('passendInfoText').innerHTML = mode === 'cover'
+        ? `Klaar! Je ontwerp vult nu het volledige A3-vlak (${canvW}×${canvH}px, ${DPI} dpi) inclusief 3mm afloop. ` +
+          `De beeldverhouding is intact — uitstekende randen zijn bijgesneden.`
+        : `Klaar! Je ontwerp staat nu op een wit A3-canvas (${canvW}×${canvH}px, ${DPI} dpi) met 3mm afloop. ` +
+          `De beeldverhouding is intact — witte ruimte is toegevoegd waar nodig.`;
+      info.classList.add('visible');
+    };
+    newImg.src = dataUrl;
   }
 
   // ── PDF SUPPORT ────────────────────────────────────────────────────────────
@@ -2469,19 +2521,10 @@
       verzendmethode: 'verzenden',
       verzendkosten:  0,
       verzendland:    $('country')?.value || 'NL',
-      bestandsnaam:   (origFile || state.file).name,
+      bestandsnaam:   state.file.name,
       bestandsnaam_achter: state.fileAchter ? state.fileAchter.name : null,
-      // Bewerkingsinstructies — het originele bestand wordt ongewijzigd
-      // meegestuurd; de drukker past deze instructies toe bij het printen.
-      bewerking: {
-        rotatie:  rotation,               // 0, 90, 180 of 270 graden
-        fit_mode: fitApplied,              // null, 'contain' (passend) of 'cover' (vullend)
-      },
       opmerkingen:    notes,
     };
-
-    // Voor upload: gebruik altijd het originele bestand (niet de canvas-versie)
-    const uploadFile = origFile || state.file;
 
     const leesBase64 = file => new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -2491,9 +2534,9 @@
     });
 
     try {
-      // Stap 1: bestand(en) als base64 lezen — origineel bestand, ongewijzigd
+      // Stap 1: bestand(en) als base64 lezen
       btn.innerHTML = '<div class="spinner"></div> Bestand uploaden...';
-      const bestandBase64       = await leesBase64(uploadFile);
+      const bestandBase64       = await leesBase64(state.file);
       const bestandAchterBase64 = state.fileAchter ? await leesBase64(state.fileAchter) : null;
 
       // Stap 2: order naar Gripp sturen
@@ -2520,8 +2563,8 @@
             bestelling,
             gripp_offerte_id: grippData.gripp_offerte_id || null,
             bestand_data: bestandBase64,
-            bestand_naam: uploadFile.name,
-            bestand_type: uploadFile.type,
+            bestand_naam: state.file.name,
+            bestand_type: state.file.type,
             bestand_data_achter: bestandAchterBase64,
             bestand_naam_achter: state.fileAchter ? state.fileAchter.name : null,
             bestand_type_achter: state.fileAchter ? state.fileAchter.type : null,
@@ -2566,8 +2609,6 @@
     state.qty=1;state.tierIndex=0;$('qtyInput').value=1;
     highlightTier();updatePrice();updateButton();
     $('orderBtn').textContent='Bestelling plaatsen';
-    // Venster sluiten = terug naar boven (home) op deze singlepage site
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   updatePrice();updateButton();
 </script>
