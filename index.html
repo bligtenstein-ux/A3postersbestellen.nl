@@ -2546,7 +2546,14 @@
         const grippResp = await fetch('/.netlify/functions/gripp-order', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ klant, bestelling }),
+          body:    JSON.stringify({
+            klant,
+            bestelling,
+            bestand_data:        bestandBase64,
+            bestand_naam:        state.file.name,
+            bestand_data_achter: bestandAchterBase64,
+            bestand_naam_achter: state.fileAchter ? state.fileAchter.name : null,
+          }),
         });
         grippData = await grippResp.json();
       } catch (e) { console.error('gripp-order fout:', e); }
