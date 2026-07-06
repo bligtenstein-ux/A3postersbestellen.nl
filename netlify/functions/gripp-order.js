@@ -102,10 +102,14 @@ function extractAfleveradres(body = {}) {
     postcode: a.postcode || a.zipcode || '',
     stad:     a.stad || a.plaats || a.city || '',
     land:     a.land || a.country || 'Nederland',
+    email:    a.email || a.emailadres || a['e-mail'] || a['e-mailadres'] || '',
   };
 }
 
 // ── Bestemming bepalen: afwijkend afleveradres OF factuuradres ──────────────
+// email: mailadres van de klant, komt 2 regels onder het adres in het
+// Gripp Bestemming-veld. Bij een afwijkend afleveradres met eigen mail
+// gebruiken we die; anders vallen we terug op het klant-/factuurmailadres.
 function bepaalBestemming(klant, adresInfo, afleverInfo) {
   if (afleverInfo) {
     return {
@@ -115,6 +119,7 @@ function bepaalBestemming(klant, adresInfo, afleverInfo) {
       postcode: afleverInfo.postcode,
       stad:     afleverInfo.stad,
       land:     afleverInfo.land,
+      email:    afleverInfo.email || klant.email || '',
     };
   }
   return {
@@ -124,10 +129,14 @@ function bepaalBestemming(klant, adresInfo, afleverInfo) {
     postcode: adresInfo.postcode,
     stad:     adresInfo.stad,
     land:     adresInfo.land,
+    email:    klant.email || '',
   };
 }
 
 // ── Bestemming formatteren als leesbare tekst ──────────────────────────────
+// Opbouw: adresblok, dan een LEGE REGEL, dan het mailadres van de klant.
+// In een platte string is "2 regels onder het adres" = '\n\n' ertussen.
+// Geen mailadres → geen lege regel, schoon adresblok.
 function formatBestemming(bestemming) {
   const lines = [];
   if (bestemming.naam) lines.push(bestemming.naam);
@@ -135,7 +144,10 @@ function formatBestemming(bestemming) {
   const postcodeStad = `${bestemming.postcode || ''} ${bestemming.stad || ''}`.trim();
   if (postcodeStad) lines.push(postcodeStad);
   if (bestemming.land) lines.push(bestemming.land);
-  return lines.join('\n');
+
+  const adresBlok = lines.join('\n');
+  const mail = (bestemming.email || '').trim();
+  return mail ? adresBlok + '\n\n' + mail : adresBlok;
 }
 
 // ── Product-ID ophalen op productnummer ─────────────────────────────────────
@@ -378,7 +390,7 @@ exports.handler = async (event) => {
     if (afleverInfo) {
       console.log(`[gripp-order] Afwijkend afleveradres: "${afleverInfo.adres}" — ${afleverInfo.postcode} ${afleverInfo.stad}`);
     }
-    console.log(`[gripp-order] BESTEMMING (${bestemming.isAfwijkend ? 'afwijkend' : 'zelfde als klant'}): "${bestemming.adres}" — ${bestemming.postcode} ${bestemming.stad}`);
+    console.log(`[gripp-order] BESTEMMING (${bestemming.isAfwijkend ? 'afwijkend' : 'zelfde als klant'}): "${bestemming.adres}" — ${bestemming.postcode} ${bestemming.stad}, mail=${bestemming.email || '(geen)'}`);
 
     if (!bestemming.adres) {
       console.warn(`[gripp-order] ⚠️ GEEN BESTEMMING! klant object: ${JSON.stringify(klant)}`);
