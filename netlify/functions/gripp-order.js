@@ -17,6 +17,7 @@
 const GRIPP_API      = 'https://api.gripp.com/public/api3.php';
 const TEMPLATE_ID    = 40; // Buro Extern sjabloon
 const PRODUCT_NUMMER = '1041'; // Drukwerk
+const PAPIERSOORT    = '170 grams Gloss MC';
 
 const STAFFEL = [
   { min: 1,   max: 9,   prijs: 4.95 },
@@ -277,6 +278,7 @@ function bouwOfferteBeschrijving({ aantal, prijsPerStuk, methode, bestelling,
                                     klant, adresInfo, bestemming }) {
   const regels = [
     `Bestelling: ${aantal}× A3 poster`,
+    `Papiersoort: ${PAPIERSOORT}`,
     `Prijs p/st: €${prijsPerStuk.toFixed(2)}`,
     bestelling.drukzijde ? `Drukzijde: ${bestelling.drukzijde}` : '',
     // Bewerkingsinstructies (rotatie / passend / vullend) — het originele
@@ -394,7 +396,7 @@ exports.handler = async (event) => {
     // Offerteregels
     const offerlines = [];
     const bestandsinfo = bestelling.bestandsnaam ? ` (bestand: ${bestelling.bestandsnaam})` : '';
-    offerlines.push(maakRegel(productId, aantal, prijsPerStuk, `A3 poster full color${bestandsinfo}`));
+    offerlines.push(maakRegel(productId, aantal, prijsPerStuk, `A3 poster full color — ${PAPIERSOORT}${bestandsinfo}`));
 
     if (bestelling.korting?.bedrag > 0) {
       offerlines.push(maakRegel(
