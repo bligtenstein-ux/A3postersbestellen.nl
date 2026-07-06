@@ -18,6 +18,7 @@ const GRIPP_API      = 'https://api.gripp.com/public/api3.php';
 const TEMPLATE_ID    = 40; // Buro Extern sjabloon
 const PRODUCT_NUMMER = '1041'; // Drukwerk
 const PAPIERSOORT    = '170 grams Gloss MC';
+const TAG_COMMUNICATIE = 19; // Gripp-tag "Communicatie" — automatisch op elke webshop-offerte
 
 const STAFFEL = [
   { min: 1,   max: 9,   prijs: 4.95 },
@@ -431,6 +432,7 @@ exports.handler = async (event) => {
       // het veld heet "workdeliveraddress" (niet deliveryaddress/destination
       // zoals eerder gegokt).
       workdeliveraddress: bestemmingText,
+      tags:               [TAG_COMMUNICATIE],
     };
 
     console.log(`[gripp-order] Offerte aanmaken: ${offerlines.length} regels, company=${companyId}, order=${ordernummer}, template=${TEMPLATE_ID}`);
