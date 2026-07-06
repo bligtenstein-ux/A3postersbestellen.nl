@@ -150,6 +150,42 @@ function formatBestemming(bestemming) {
   return mail ? adresBlok + '\n\n' + mail : adresBlok;
 }
 
+// ── Bestand uploaden naar Gripp ─────────────────────────────────────────────
+// file.uploadContent(data, name) uploadt een base64-bestand. De officiële
+// docs zeggen "True On Success", maar in de praktijk komt het file-ID terug
+// als result.recordid — dat gebruiken we om het bestand aan de offerte te
+// koppelen (offer.files verwacht een array van integer file-ID's).
+//
+// base64 mag een data:-URL-prefix hebben (bv. "data:application/pdf;base64,...");
+// die knippen we eraf want Gripp verwacht kale base64.
+async function uploadBestand(token, base64, naam) {
+  if (!base64 || !naam) return null;
+
+  const komma = base64.indexOf(',');
+  const kaleData = (base64.startsWith('data:') && komma >= 0)
+    ? base64.slice(komma + 1)
+    : base64;
+
+  try {
+    const res = await gripp(token, [{
+      method: 'file.uploadContent',
+      params: [{ data: kaleData, name: naam }],
+      id: 1,
+    }]);
+    const result = res[0]?.result;
+    const fileId = result?.recordid || result?.id;
+    if (result?.success && fileId) {
+      console.log(`[gripp-order] ✓ Bestand geüpload: "${naam}" → file.id=${fileId}`);
+      return fileId;
+    }
+    console.warn(`[gripp-order] ⚠️ Upload "${naam}" gaf geen file-ID terug: ${JSON.stringify(res[0])}`);
+    return null;
+  } catch (err) {
+    console.error(`[gripp-order] ✗ Upload "${naam}" mislukt: ${err.message}`);
+    return null;
+  }
+}
+
 // ── Product-ID ophalen op productnummer ─────────────────────────────────────
 async function haalProductId(token) {
   try {
@@ -429,6 +465,28 @@ exports.handler = async (event) => {
     // Bestemming als tekst voor Gripp's Bestemming-veld
     const bestemmingText = formatBestemming(bestemming);
 
+    // ── Drukbestand(en) uploaden naar Gripp en aan de offerte koppelen ──────
+    // De frontend stuurt de base64 mee (dezelfde velden als naar save-order).
+    // We geven het bestand een naam met het ordernummer erin, zodat het in
+    // Gripp herkenbaar bij de juiste order hoort.
+    const fileIds = [];
+
+    if (body.bestand_data) {
+      const naamVoor = `${ordernummer}-${bestelling.bestandsnaam || body.bestand_naam || 'voorzijde'}`;
+      const idVoor = await uploadBestand(token, body.bestand_data, naamVoor);
+      if (idVoor) fileIds.push(idVoor);
+    } else {
+      console.log('[gripp-order] Geen bestand_data meegestuurd — geen bijlage geüpload naar Gripp.');
+    }
+
+    if (body.bestand_data_achter) {
+      const naamAchter = `${ordernummer}-achterzijde-${bestelling.bestandsnaam_achter || body.bestand_naam_achter || 'achterzijde'}`;
+      const idAchter = await uploadBestand(token, body.bestand_data_achter, naamAchter);
+      if (idAchter) fileIds.push(idAchter);
+    }
+
+    console.log(`[gripp-order] ${fileIds.length} bestand(en) gekoppeld aan offerte: [${fileIds.join(', ')}]`);
+
     // Offerte params. We proberen meerdere mogelijke veldnamen voor het
     // Bestemming-veld — Gripp negeert onbekende velden dus dit is veilig.
     const offerteParams = {
@@ -447,6 +505,11 @@ exports.handler = async (event) => {
       tags:               [TAG_COMMUNICATIE],
     };
 
+    // Alleen meesturen als er daadwerkelijk bestanden zijn geüpload.
+    if (fileIds.length > 0) {
+      offerteParams.files = fileIds;
+    }
+
     console.log(`[gripp-order] Offerte aanmaken: ${offerlines.length} regels, company=${companyId}, order=${ordernummer}, template=${TEMPLATE_ID}`);
     console.log(`[gripp-order] Bestemming-tekst die naar Gripp gaat:\n${bestemmingText}`);
 
@@ -461,6 +524,22 @@ exports.handler = async (event) => {
     if (!offerteId) throw new Error('Offerte aanmaken mislukt: ' + JSON.stringify(result));
 
     console.log(`[gripp-order] ✓ Offerte ${offerteId} aangemaakt voor ${ordernummer}`);
+
+    // Fallback: mocht offer.create het files-veld niet meepakken, koppel de
+    // bestanden alsnog via offer.update. Faalt dit, dan blijft de offerte
+    // gewoon bestaan (zonder bijlage) — we loggen het en gaan door.
+    if (fileIds.length > 0) {
+      try {
+        await gripp(token, [{
+          method: 'offer.update',
+          params: [offerteId, { files: fileIds }],
+          id: 1,
+        }]);
+        console.log(`[gripp-order] ✓ Bestanden gekoppeld via offer.update aan offerte ${offerteId}`);
+      } catch (updErr) {
+        console.warn(`[gripp-order] ⚠️ offer.update voor bestanden mislukt (offerte bestaat wel): ${updErr.message}`);
+      }
+    }
 
     return {
       statusCode: 200,
