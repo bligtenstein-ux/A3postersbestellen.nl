@@ -1653,7 +1653,7 @@
         <div class="editor-drop-tags">
           <span class="editor-drop-tag">PDF &amp; afbeeldingen</span>
           <span class="editor-drop-tag">297 × 420 mm (A3)</span>
-          <span class="editor-drop-tag">Max. 50 MB</span>
+          <span class="editor-drop-tag">Max. 4 MB</span>
         </div>
       </div>
 
@@ -1724,7 +1724,7 @@
         <div class="editor-drop-zone" id="achterUploadZone">
           <input type="file" id="fileInputAchter" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp" onchange="handleFileAchter(this.files[0])">
           <div class="editor-drop-title">Sleep de achterzijde hierheen of klik om te uploaden</div>
-          <div class="editor-drop-sub">PDF, PNG of JPG — max. 50 MB</div>
+          <div class="editor-drop-sub">PDF, PNG of JPG — max. 4 MB</div>
         </div>
         <div class="achter-file-strip" id="achterFileStrip">
           <span class="achter-check">&#10003;</span>
@@ -1943,7 +1943,7 @@
       <div class="order-meta">Bevestiging verstuurd naar <strong id="successEmail">jouw e-mail</strong></div>
     </div>
     <p style="margin-bottom:1.5rem">Je poster wordt morgen bezorgd per koker. Vragen? Bel <strong>072 567 00 00</strong> of mail <strong>print@extern.nl</strong>.</p>
-    <button class="btn-new" onclick="closeSuccess()">Nieuwe bestelling plaatsen</button>
+    <button class="btn-new" onclick="closeSuccess()">Bestelling gelukt! Sluit venster</button>
   </div>
 </div>
 
@@ -1961,6 +1961,15 @@
     {min:1000, max:9999, price:0.47},
   ];
   let state = {qty:1, file:null, fileAchter:null, tierIndex:0, drukzijde:'enkel'};
+
+  // Maximale uploadgrootte PER BESTAND. Netlify's synchrone functions hebben
+  // een harde payload-limiet van ~6 MB; het bestand gaat als base64 (+33%) mee
+  // in de JSON-body naar zowel gripp-order als save-order. ~4 MB ruw bestand is
+  // daarom de veilige bovengrens. Groter → order bereikt de server nooit en
+  // faalt stil. Zie ook de grootte-check vlak vóór verzenden in submitOrder().
+  const MAX_UPLOAD_MB = 4;
+  const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
+
   const $ = id => document.getElementById(id);
   const fmt = n => '€' + n.toFixed(2).replace('.',',');
 
@@ -1996,7 +2005,12 @@
 
   function handleFileAchter(file) {
     if (!file) return;
-    if (file.size > 50*1024*1024) { alert('Bestand is groter dan 50 MB. Gebruik een kleiner bestand.'); return; }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      alert('Je bestand is ' + (file.size/1024/1024).toFixed(1) + ' MB. Het maximum is ' + MAX_UPLOAD_MB + ' MB.\n\n' +
+            'Maak je bestand kleiner (bijv. de PDF comprimeren), of mail het na het bestellen naar print@extern.nl ' +
+            'onder vermelding van je ordernummer, dan verwerken wij het handmatig.');
+      return;
+    }
     state.fileAchter = file;
     const zone = $('achterUploadZone');
     if (zone) zone.style.display = 'none';
@@ -2362,7 +2376,12 @@
   // ── HANDLE FILE ────────────────────────────────────────────────────────────
   function handleFile(file) {
     if(!file) return;
-    if(file.size > 50*1024*1024) { alert('Bestand is groter dan 50 MB. Gebruik een kleiner bestand.'); return; }
+    if(file.size > MAX_UPLOAD_BYTES) {
+      alert('Je bestand is ' + (file.size/1024/1024).toFixed(1) + ' MB. Het maximum is ' + MAX_UPLOAD_MB + ' MB.\n\n' +
+            'Maak je bestand kleiner (bijv. de PDF comprimeren), of mail het na het bestellen naar print@extern.nl ' +
+            'onder vermelding van je ordernummer, dan verwerken wij het handmatig.');
+      return;
+    }
     state.file = file;
     origFile = file;
     pdfDoc = null; pdfPage = 1; rotation = 0;
@@ -2484,6 +2503,20 @@
     if (!state.file || !email.includes('@')) return;
     if (state.drukzijde === 'dubbel' && !state.fileAchter) return;
 
+    // Vangnet: controleer bestandsgrootte(s) vóór verzenden. Netlify weigert
+    // payloads boven ~6 MB; groter bestand → order bereikt de server nooit.
+    // We checken elk bestand afzonderlijk tegen de limiet.
+    const teGroot = [state.file, state.fileAchter]
+      .filter(Boolean)
+      .find(f => f.size > MAX_UPLOAD_BYTES);
+    if (teGroot) {
+      alert('Je bestand "' + teGroot.name + '" is ' + (teGroot.size/1024/1024).toFixed(1) +
+            ' MB. Het maximum is ' + MAX_UPLOAD_MB + ' MB.\n\n' +
+            'Maak het bestand kleiner (bijv. de PDF comprimeren), of neem contact met ons op ' +
+            'via print@extern.nl, dan verwerken wij het handmatig.');
+      return;
+    }
+
     const btn = $('orderBtn');
     btn.innerHTML = '<div class="spinner"></div> Bestelling verwerken...';
     btn.disabled = true;
@@ -2580,12 +2613,31 @@
         opgeslagen = saveResp.ok;
       } catch (e) { console.error('save-order fout:', e); }
 
-      // Stap 4: bevestiging tonen (ook als Gripp fout had)
+      // Stap 4: bevestiging KOPPELEN aan werkelijk succes.
+      // Alleen "Bedankt" tonen als de order daadwerkelijk is opgeslagen in de
+      // backend (save-order gaf ok). Gripp mag falen — dan staat de order nog
+      // veilig in de admin en kun je 'm handmatig naar Gripp syncen. Maar als
+      // save-order faalt, is er NERGENS iets opgeslagen: dan géén successcherm,
+      // maar een duidelijk foutscherm met mail-instructie. Zo denkt een klant
+      // nooit meer dat het gelukt is terwijl er niks is aangekomen.
+      if (!opgeslagen) {
+        alert('Let op: je bestelling kon niet worden verwerkt.\n\n' +
+              'Waarschijnlijk is je drukbestand te groot. Mail je bestand naar ' +
+              'print@extern.nl onder vermelding van ordernummer #' + ordernummer + ', ' +
+              'dan nemen wij je bestelling direct in behandeling.\n\n' +
+              'Je kunt ook contact opnemen via 072 567 00 00.');
+        btn.innerHTML = 'Bestelling plaatsen';
+        btn.disabled  = false;
+        return;
+      }
+
+      // Vanaf hier: order staat gegarandeerd in de backend.
       $('successOrderNum').textContent = '#' + ordernummer;
       $('successEmail').textContent    = email;
       $('successOverlay').classList.add('visible');
 
-      // Conversie-tracking (Google Analytics / Ads) — vuurt alleen als gtag geladen is
+      // Conversie-tracking (Google Analytics / Ads) — vuurt alleen bij een
+      // succesvol opgeslagen order, zodat je Ads-data geen nep-conversies bevat.
       if (typeof gtag === 'function') {
         gtag('event', 'purchase', {
           transaction_id: ordernummer,
@@ -2595,9 +2647,10 @@
         });
       }
 
-      if (!opgeslagen) {
-        alert('Je bestelling is geplaatst, maar het uploaden van je drukbestand is niet gelukt (mogelijk te groot). ' +
-              'Mail je bestand met ordernummer #' + ordernummer + ' naar print@extern.nl, dan gaan wij direct aan de slag.');
+      // Gripp-sync mislukt maar order wél opgeslagen: melden zodat jij weet dat
+      // je 'm handmatig moet syncen (de klant ziet gewoon het successcherm).
+      if (!grippData.gripp_offerte_id) {
+        console.warn('[order] ' + ordernummer + ' opgeslagen in backend, maar Gripp-sync mislukte — handmatig syncen.');
       }
 
     } catch (e) {
