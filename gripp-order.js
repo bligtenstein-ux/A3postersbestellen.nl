@@ -20,6 +20,18 @@ const PRODUCT_NUMMER = '1041'; // Drukwerk
 const PAPIERSOORT    = '170 grams Gloss MC';
 const TAG_COMMUNICATIE = 19; // Gripp-tag "Communicatie" — automatisch op elke webshop-offerte
 
+// Identity = de verkopende entiteit (Buro Extern) waaronder relaties/offertes
+// moeten vallen. De werkende DTF-calculator stuurt dit expliciet mee; deze site
+// deed dat niet — waardoor relaties mogelijk onder het parent-/"Extern"-account
+// belandden en het adres niet op de verwachte kaart verscheen.
+//
+// ⚠️ VUL HET JUISTE ID IN. Dit is NIET per se hetzelfde als TEMPLATE_ID (40).
+// Lees het af in Gripp onder Instellingen → Identiteiten & Sjablonen, of via
+// gripp-diag.js (?offerte=PS-... toont het identity-veld van een bestaande
+// a3-offerte, die al onder de juiste identiteit valt).
+// Zolang dit null is, wordt identity NIET meegestuurd (veilig — geen gok).
+const GRIPP_IDENTITY_ID = null; // ← vervang door het juiste getal, bv. 2
+
 const STAFFEL = [
   { min: 1,   max: 9,   prijs: 4.95 },
   { min: 10,  max: 24,  prijs: 3.95 },
@@ -258,20 +270,33 @@ async function haalProductId(token) {
 // daadwerkelijk gevuld zijn. Zo overschrijven we bij een update nooit
 // bestaande gegevens in Gripp met een lege string.
 //
-// BELANGRIJK: Gripp gebruikt voor het zichtbare Bezoekadres op een company de
-// velden visitingaddress_street / _streetnumber / _zipcode / _city / _country
-// (geverifieerd via de officiële API-velddocumentatie). De eerder gebruikte
-// namen address/zipcode/city BESTAAN NIET en werden stil genegeerd (HTTP 200,
-// leeg Bezoekadres) — dezelfde valkuil als destijds bij workdeliveraddress.
-// Straat en huisnummer zijn APARTE velden, dus we splitsen de adresstring.
+// VELDNAMEN: we sturen BEIDE bekende sets mee, omdat twee betrouwbare bronnen
+// elkaar tegenspreken en Gripp onbekende velden stil negeert (dus dubbel sturen
+// is veilig):
+//   1. address / zipcode / city / country — deze set draait aantoonbaar correct
+//      op de DTF-calculator (zelfde Gripp-account). Straat+huisnummer samen.
+//   2. visitingaddress_street / _streetnumber / _zipcode / _city / _country —
+//      de namen uit de officiële company-velddocumentatie. Huisnummer apart.
+// Welke van de twee jouw Gripp daadwerkelijk gebruikt, blijkt uit gripp-diag.js
+// (company_ophalen_op_id toont de echte veldnamen). Zodra dat bekend is, kan de
+// overbodige set eruit. Tot dan: beide, want dat kan geen kwaad.
 function companyAdresVelden(klant, adresInfo, { inclusiefContact = true } = {}) {
   const velden = {};
   const { street, number } = splitStraatNummer(adresInfo.adres);
+
+  // Set 1 — DTF-bewezen namen (straat+huisnummer samen)
+  if (adresInfo.adres)    velden.address = adresInfo.adres;
+  if (adresInfo.postcode) velden.zipcode = adresInfo.postcode;
+  if (adresInfo.stad)     velden.city    = adresInfo.stad;
+  if (adresInfo.land)     velden.country = adresInfo.land;
+
+  // Set 2 — velddoc-namen (huisnummer apart)
   if (street)             velden.visitingaddress_street       = street;
   if (number)             velden.visitingaddress_streetnumber = number;
   if (adresInfo.postcode) velden.visitingaddress_zipcode      = adresInfo.postcode;
   if (adresInfo.stad)     velden.visitingaddress_city         = adresInfo.stad;
   if (adresInfo.land)     velden.visitingaddress_country      = adresInfo.land;
+
   if (inclusiefContact) {
     if (klant.telefoon) velden.phone = klant.telefoon;
     if (klant.email)    velden.email = klant.email;
@@ -336,25 +361,33 @@ async function zoekOfMaakRelatie(token, klant) {
   console.log(`[gripp-order] Nieuwe relatie aanmaken — bedrijf="${klant.bedrijf || klant.naam || klant.email}", adres="${adresInfo.adres}", postcode="${adresInfo.postcode}", stad="${adresInfo.stad}"`);
 
   // Adresvelden via dezelfde helper als de update, zodat create en update
-  // exact dezelfde (geverifieerde) visitingaddress_*-velden gebruiken.
+  // dezelfde velden zetten.
   const adresVelden = companyAdresVelden(klant, adresInfo, { inclusiefContact: false });
+
+  const createParams = {
+    companyname: klant.bedrijf || klant.naam || klant.email,
+    email:       klant.email,
+    cocnumber:   klant.kvk || '',
+    phone:       klant.telefoon || '',
+    ...adresVelden,
+    relationtype: { id: 1 },
+  };
+  // Identity alleen meesturen als het ID is ingevuld (anders geen gok).
+  if (GRIPP_IDENTITY_ID != null) {
+    createParams.identity = { id: GRIPP_IDENTITY_ID };
+  }
 
   const nieuw = await gripp(token, [{
     method: 'company.create',
-    params: [{
-      companyname: klant.bedrijf || klant.naam || klant.email,
-      email:       klant.email,
-      cocnumber:   klant.kvk || '',
-      phone:       klant.telefoon || '',
-      ...adresVelden,
-      relationtype: { id: 1 },
-    }],
+    params: [createParams],
     id: 1,
   }]);
 
+  // HTTP 200 ≠ succes bij Gripp — check expliciet op result.id én op een error.
+  const fout = nieuw[0]?.error || nieuw[0]?.error_text;
   const id = nieuw[0]?.result?.id || nieuw[0]?.result?.recordid;
-  if (!id) throw new Error('Relatie aanmaken mislukt: ' + JSON.stringify(nieuw[0]?.result));
-  console.log(`[gripp-order] ✓ Nieuwe relatie aangemaakt: id=${id} (adresvelden: ${Object.keys(adresVelden).join(', ') || 'geen'})`);
+  if (!id) throw new Error('Relatie aanmaken mislukt' + (fout ? ` (${fout})` : '') + ': ' + JSON.stringify(nieuw[0]));
+  console.log(`[gripp-order] ✓ Nieuwe relatie aangemaakt: id=${id}${GRIPP_IDENTITY_ID != null ? ` (identity=${GRIPP_IDENTITY_ID})` : ''} (adresvelden: ${Object.keys(adresVelden).join(', ') || 'geen'})`);
   return id;
 }
 
