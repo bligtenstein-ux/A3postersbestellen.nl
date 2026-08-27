@@ -2202,6 +2202,46 @@
     updateButton();
   }
 
+  // Exporteert het A3-canvas naar een JPEG. Voor posters is JPEG de juiste keuze:
+  // het canvas heeft altijd een witte achtergrond (geen transparantie), en op
+  // 200 dpi is JPEG 0.90 voor druk niet van lossless (PNG) te onderscheiden —
+  // maar wel 3-5× kleiner. Dat houdt de upload ruim onder de limiet en voorkomt
+  // problemen voor de klant. Alleen bij een uitzonderlijk groot canvas schalen we
+  // de kwaliteit iets af (0.85, dan 0.78) om onder de doelgrootte te blijven.
+  //
+  // Marge: het bestand gaat als base64 (+~33%) én dubbel (gripp-order + save-order)
+  // mee, dus we mikken op ruim onder de ruwe MAX_UPLOAD_BYTES.
+  function canvasNaarBestand(canvas, baseNaam) {
+    const doelBytes = Math.floor(MAX_UPLOAD_BYTES * 0.72); // ~2.9 MB bij 4 MB-limiet
+
+    return new Promise((resolve) => {
+      const kwaliteiten = [0.90, 0.85, 0.78];
+
+      let i = 0;
+      let laatsteBlob = null;
+
+      const probeer = () => {
+        if (i >= kwaliteiten.length) {
+          // Alles geprobeerd: geef de kleinste (laatste = laagste kwaliteit).
+          resolve(new File([laatsteBlob], baseNaam + '.jpg', { type: 'image/jpeg' }));
+          return;
+        }
+        const q = kwaliteiten[i++];
+        canvas.toBlob((blob) => {
+          if (!blob) { probeer(); return; }
+          laatsteBlob = blob;
+          if (blob.size <= doelBytes) {
+            resolve(new File([blob], baseNaam + '.jpg', { type: 'image/jpeg' }));
+          } else {
+            probeer();
+          }
+        }, 'image/jpeg', q);
+      };
+
+      probeer();
+    });
+  }
+
   function maakPassend(mode = 'contain') {
     if(!imgEl) return;
 
@@ -2274,15 +2314,18 @@
         ? `Vullend gemaakt op A3 (${canvW}×${canvH}px bij ${DPI} dpi). Inclusief 3mm afloop.`
         : `Passend gemaakt op A3 (${canvW}×${canvH}px bij ${DPI} dpi). Inclusief 3mm afloop.`;
 
-      // Genereer nieuwe Blob voor state.file
+      // Genereer nieuwe Blob voor state.file — slimme export: PNG als het klein
+      // genoeg is, anders automatisch JPEG (canvas heeft witte achtergrond, dus
+      // geen kwaliteitsverlies door transparantie). Voorkomt dat een A3-canvas
+      // als 6+ MB PNG de uploadlimiet overschrijdt.
       const suffix = mode === 'cover' ? '_a3vullend' : '_a3passend';
-      off.toBlob(blob => {
-        const origName = state.file ? state.file.name.replace(/\.[^.]+$/, '') : 'ontwerp';
-        state.file = new File([blob], origName + suffix + '.png', {type: 'image/png'});
+      const origName = state.file ? state.file.name.replace(/\.[^.]+$/, '') : 'ontwerp';
+      canvasNaarBestand(off, origName + suffix).then(bestand => {
+        state.file = bestand;
         origFile = state.file; // dit is nu de nieuwe basis voor evt. verdere rotatie
         setFilenameLabel(state.file);
         updateButton();
-      }, 'image/png');
+      });
 
       // Feedback op de juiste knop
       resetFitState();
