@@ -20,6 +20,18 @@ const PRODUCT_NUMMER = '1041'; // Drukwerk
 const PAPIERSOORT    = '170 grams Gloss MC';
 const TAG_COMMUNICATIE = 19; // Gripp-tag "Communicatie" — automatisch op elke webshop-offerte
 
+// Identity = de verkopende entiteit (Buro Extern) waaronder relaties/offertes
+// moeten vallen. De werkende DTF-calculator stuurt dit expliciet mee; deze site
+// deed dat niet — waardoor relaties mogelijk onder het parent-/"Extern"-account
+// belandden en het adres niet op de verwachte kaart verscheen.
+//
+// ⚠️ VUL HET JUISTE ID IN. Dit is NIET per se hetzelfde als TEMPLATE_ID (40).
+// Lees het af in Gripp onder Instellingen → Identiteiten & Sjablonen, of via
+// gripp-diag.js (?offerte=PS-... toont het identity-veld van een bestaande
+// a3-offerte, die al onder de juiste identiteit valt).
+// Zolang dit null is, wordt identity NIET meegestuurd (veilig — geen gok).
+const GRIPP_IDENTITY_ID = 2; // Buro Extern BV — geverifieerd via gripp-diag (offerte PS-78636)
+
 const STAFFEL = [
   { min: 1,   max: 9,   prijs: 4.95 },
   { min: 10,  max: 24,  prijs: 3.95 },
@@ -77,6 +89,22 @@ function extractAdres(klant = {}) {
     land:     (nested && (nested.land || nested.country))
            || klant.land || klant.country || 'Nederland',
   };
+}
+
+// Splitst een NL-adresstring ("Berenkoog 11", "Ligne 2A", "Da Costakade 158-3")
+// in straatnaam en huisnummer. Gripp heeft aparte velden visitingaddress_street
+// en visitingaddress_streetnumber. Nederlandse adressen zetten het nummer achteraan;
+// we pakken de laatste groep die met een cijfer begint (incl. toevoeging als 11A of 158-3).
+// Lukt het splitsen niet, dan gaat de hele string als straat mee en blijft nummer leeg.
+function splitStraatNummer(adresString) {
+  const s = (adresString || '').trim();
+  if (!s) return { street: '', number: '' };
+  // Match: alles vóór het laatste huisnummer = straat; het nummer + evt. toevoeging = number.
+  const m = s.match(/^(.*?)\s+(\d+\s*[-–]?\s*[a-zA-Z]?\d*.*)$/);
+  if (m) {
+    return { street: m[1].trim(), number: m[2].trim() };
+  }
+  return { street: s, number: '' };
 }
 
 // De frontend stuurt het afwijkend afleveradres als klant.afleveradres
@@ -237,54 +265,140 @@ async function haalProductId(token) {
 }
 
 // ── Klant zoeken of aanmaken ────────────────────────────────────────────────
+
+// Bouwt een object met company-adresvelden, maar ALLEEN de velden die
+// daadwerkelijk gevuld zijn. Zo overschrijven we bij een update nooit
+// bestaande gegevens in Gripp met een lege string.
+//
+// VELDNAMEN: we sturen BEIDE bekende sets mee, omdat twee betrouwbare bronnen
+// elkaar tegenspreken en Gripp onbekende velden stil negeert (dus dubbel sturen
+// is veilig):
+//   1. address / zipcode / city / country — deze set draait aantoonbaar correct
+//      op de DTF-calculator (zelfde Gripp-account). Straat+huisnummer samen.
+//   2. visitingaddress_street / _streetnumber / _zipcode / _city / _country —
+//      de namen uit de officiële company-velddocumentatie. Huisnummer apart.
+// Welke van de twee jouw Gripp daadwerkelijk gebruikt, blijkt uit gripp-diag.js
+// (company_ophalen_op_id toont de echte veldnamen). Zodra dat bekend is, kan de
+// overbodige set eruit. Tot dan: beide, want dat kan geen kwaad.
+function companyAdresVelden(klant, adresInfo, { inclusiefContact = true } = {}) {
+  const velden = {};
+  const { street, number } = splitStraatNummer(adresInfo.adres);
+
+  // Set 1 — DTF-bewezen namen (straat+huisnummer samen)
+  if (adresInfo.adres)    velden.address = adresInfo.adres;
+  if (adresInfo.postcode) velden.zipcode = adresInfo.postcode;
+  if (adresInfo.stad)     velden.city    = adresInfo.stad;
+  if (adresInfo.land)     velden.country = adresInfo.land;
+
+  // Set 2 — velddoc-namen (huisnummer apart)
+  if (street)             velden.visitingaddress_street       = street;
+  if (number)             velden.visitingaddress_streetnumber = number;
+  if (adresInfo.postcode) velden.visitingaddress_zipcode      = adresInfo.postcode;
+  if (adresInfo.stad)     velden.visitingaddress_city         = adresInfo.stad;
+  if (adresInfo.land)     velden.visitingaddress_country      = adresInfo.land;
+
+  if (inclusiefContact) {
+    if (klant.telefoon) velden.phone = klant.telefoon;
+    if (klant.email)    velden.email = klant.email;
+  }
+  return velden;
+}
+
+// Werkt het adres (en telefoon/e-mail) van een BESTAANDE relatie bij. Alleen
+// niet-lege velden worden meegestuurd, dus bestaande gegevens in Gripp gaan
+// nooit verloren door een lege waarde. Faalt de update, dan blijft de order
+// gewoon doorgaan (we loggen het) — een ontbrekend adres mag geen order blokkeren.
+// Update-signatuur volgt het bewezen patroon uit offer.update: params = [id, {velden}].
+async function werkAdresBij(token, companyId, klant, adresInfo) {
+  const velden = companyAdresVelden(klant, adresInfo);
+  if (Object.keys(velden).length === 0) {
+    console.log(`[gripp-order] Geen adresvelden om bij te werken voor relatie ${companyId}`);
+    return;
+  }
+  try {
+    await gripp(token, [{
+      method: 'company.update',
+      params: [companyId, velden],
+      id: 1,
+    }]);
+    console.log(`[gripp-order] ✓ Adres bijgewerkt op bestaande relatie ${companyId}: ${Object.keys(velden).join(', ')}`);
+  } catch (err) {
+    console.warn(`[gripp-order] ⚠️ Adres bijwerken op relatie ${companyId} mislukt (order gaat door): ${err.message}`);
+  }
+}
+
 async function zoekOfMaakRelatie(token, klant) {
   const adresInfo = extractAdres(klant);
 
+  // BELANGRIJK: company.search BESTAAT NIET in Gripp (geeft error
+  // "API_search() does not exist"). De juiste lees-methode is company.get met
+  // [[filters], { paging }]. Geverifieerd via gripp-diag. Dit was de oorzaak van
+  // de duplicaat-relaties: elke zoekopdracht faalde stil, dus werd er telkens
+  // een nieuwe company aangemaakt.
   if (klant.kvk) {
     const res = await gripp(token, [{
-      method: 'company.search',
-      params: [[{ field: 'company.cocnumber', operator: 'equals', value: klant.kvk }], {}, 1, 0],
+      method: 'company.get',
+      params: [
+        [{ field: 'company.cocnumber', operator: 'equals', value: klant.kvk }],
+        { paging: { firstresult: 0, maxresults: 1 } },
+      ],
       id: 1,
     }]);
     const rows = res[0]?.result?.rows;
     if (rows?.length > 0) {
-      console.log(`[gripp-order] Bestaande relatie gevonden op KVK: id=${rows[0].id}`);
-      return rows[0].id;
+      const bestaandId = rows[0].id;
+      console.log(`[gripp-order] Bestaande relatie gevonden op KVK: id=${bestaandId}`);
+      await werkAdresBij(token, bestaandId, klant, adresInfo);
+      return bestaandId;
     }
   }
 
   const res2 = await gripp(token, [{
-    method: 'company.search',
-    params: [[{ field: 'company.email', operator: 'equals', value: klant.email }], {}, 1, 0],
+    method: 'company.get',
+    params: [
+      [{ field: 'company.email', operator: 'equals', value: klant.email }],
+      { paging: { firstresult: 0, maxresults: 1 } },
+    ],
     id: 1,
   }]);
   const rows2 = res2[0]?.result?.rows;
   if (rows2?.length > 0) {
-    console.log(`[gripp-order] Bestaande relatie gevonden op e-mail: id=${rows2[0].id}`);
-    return rows2[0].id;
+    const bestaandId = rows2[0].id;
+    console.log(`[gripp-order] Bestaande relatie gevonden op e-mail: id=${bestaandId}`);
+    await werkAdresBij(token, bestaandId, klant, adresInfo);
+    return bestaandId;
   }
 
   console.log(`[gripp-order] Nieuwe relatie aanmaken — bedrijf="${klant.bedrijf || klant.naam || klant.email}", adres="${adresInfo.adres}", postcode="${adresInfo.postcode}", stad="${adresInfo.stad}"`);
 
+  // Adresvelden via dezelfde helper als de update, zodat create en update
+  // dezelfde velden zetten.
+  const adresVelden = companyAdresVelden(klant, adresInfo, { inclusiefContact: false });
+
+  const createParams = {
+    companyname: klant.bedrijf || klant.naam || klant.email,
+    email:       klant.email,
+    cocnumber:   klant.kvk || '',
+    phone:       klant.telefoon || '',
+    ...adresVelden,
+    relationtype: { id: 1 },
+  };
+  // Identity alleen meesturen als het ID is ingevuld (anders geen gok).
+  if (GRIPP_IDENTITY_ID != null) {
+    createParams.identity = { id: GRIPP_IDENTITY_ID };
+  }
+
   const nieuw = await gripp(token, [{
     method: 'company.create',
-    params: [{
-      companyname: klant.bedrijf || klant.naam || klant.email,
-      email:       klant.email,
-      cocnumber:   klant.kvk || '',
-      phone:       klant.telefoon || '',
-      address:     adresInfo.adres,
-      zipcode:     adresInfo.postcode,
-      city:        adresInfo.stad,
-      country:     adresInfo.land,
-      relationtype: { id: 1 },
-    }],
+    params: [createParams],
     id: 1,
   }]);
 
+  // HTTP 200 ≠ succes bij Gripp — check expliciet op result.id én op een error.
+  const fout = nieuw[0]?.error || nieuw[0]?.error_text;
   const id = nieuw[0]?.result?.id || nieuw[0]?.result?.recordid;
-  if (!id) throw new Error('Relatie aanmaken mislukt: ' + JSON.stringify(nieuw[0]?.result));
-  console.log(`[gripp-order] ✓ Nieuwe relatie aangemaakt: id=${id}`);
+  if (!id) throw new Error('Relatie aanmaken mislukt' + (fout ? ` (${fout})` : '') + ': ' + JSON.stringify(nieuw[0]));
+  console.log(`[gripp-order] ✓ Nieuwe relatie aangemaakt: id=${id}${GRIPP_IDENTITY_ID != null ? ` (identity=${GRIPP_IDENTITY_ID})` : ''} (adresvelden: ${Object.keys(adresVelden).join(', ') || 'geen'})`);
   return id;
 }
 
