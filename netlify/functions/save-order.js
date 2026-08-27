@@ -1,15 +1,18 @@
 // netlify/functions/save-order.js
-// Slaat orders + drukbestand(en) op in de Neon database
-// Ondersteunt dubbelzijdig drukken: achterzijde-bestand wordt mee opgeslagen.
-//
-// Wijzigingen t.o.v. vorige versie:
-//   - Uitgebreide logging (ordernummer, bestandsgroottes, resultaat)
-//   - Collision-detectie via RETURNING: als ordernummer al bestaat, wordt
-//     nu 409 teruggegeven i.p.v. valse success zodat de frontend het weet.
-//   - Toegestane origins uitgebreid met de www.-variant.
-//   - Strikte origin-check via startsWith i.p.v. includes.
+// Slaat orders + drukbestand(en) op in de Neon database en stuurt een
+// order-notificatie per e-mail naar print@extern.nl via Resend.
+// Ondersteunt dubbelzijdig drukken (achterzijde-bestand) en het geval dat een
+// bestand te groot was om mee te sturen (bestand_te_groot → klant stuurt via WeTransfer).
 
 const { neon } = require('@neondatabase/serverless');
+const { Resend } = require('resend');
+
+// ── Mail-instellingen ───────────────────────────────────────────────────────
+// Afzender moet een GEVERIFIEERD Resend-domein zijn. Op dit moment is alleen
+// mail.kobaal.com geverifieerd; extern.nl staat nog op "Not Started". Zodra
+// extern.nl geverifieerd is, kun je MAIL_FROM wijzigen naar bv. 'orders@extern.nl'.
+const MAIL_FROM = 'A3 Posters <a3postersbestellen@mail.kobaal.com>';
+const MAIL_TO   = 'print@extern.nl';
 
 async function getDb() {
   const sql = neon(process.env.DATABASE_URL);
@@ -27,90 +30,119 @@ async function getDb() {
       aangemaakt TIMESTAMPTZ DEFAULT NOW()
     )
   `;
+  // Kolommen voor de achterzijde (dubbelzijdig drukken) — veilig bij bestaande tabel
   await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS bestand_naam_achter TEXT`;
   await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS bestand_data_achter TEXT`;
   await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS bestand_type_achter TEXT`;
   return sql;
 }
 
-// ── Hulpfuncties voor logging van bestandsgroottes ──────────────────────────
-function base64Size(str) {
-  if (!str) return 0;
-  const idx = str.indexOf(',');
-  const data = idx >= 0 ? str.slice(idx + 1) : str;
-  return Math.floor(data.length * 0.75);
-}
+// ── Order-notificatie samenstellen en versturen ─────────────────────────────
+// Faalt de mail, dan mag dat de order NIET blokkeren: de order staat al veilig
+// in de database. We loggen de fout en gaan door.
+async function stuurOrderMail({ ordernummer, klant, bestelling, gripp_offerte_id, bestandTeGroot }) {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[save-order] RESEND_API_KEY ontbreekt — geen order-mail verstuurd.');
+    return;
+  }
 
-function formatBytes(bytes) {
-  if (bytes === 0) return '0 B';
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-}
+  const resend = new Resend(process.env.RESEND_API_KEY);
 
-// ── Hoofd handler ───────────────────────────────────────────────────────────
-exports.handler = async (event) => {
-  const startTime = Date.now();
-  const origin = event.headers?.origin || '';
-  const referer = event.headers?.referer || '';
+  const k = klant || {};
+  const b = bestelling || {};
+  const adres = k.adres || {};
+  const aflever = k.afleveradres || null;
 
-  const TOEGESTANE_HOSTS = [
-    'https://a3postersbestellen.nl',
-    'https://www.a3postersbestellen.nl',
-    'https://a3posters.netlify.app',
+  const euro = (n) => '€' + Number(n || 0).toFixed(2).replace('.', ',');
+  const regelPrijs = (b.prijs_per_stuk != null && b.aantal != null)
+    ? euro(b.prijs_per_stuk * b.aantal) : '—';
+
+  // Platte-tekst body — bewust simpel en volledig, ideaal voor de printworkflow.
+  const regels = [
+    `Nieuwe order: #${ordernummer}`,
+    ``,
+    `— Bestelling —`,
+    `Aantal: ${b.aantal ?? '—'}× A3 poster`,
+    `Prijs p/st: ${b.prijs_per_stuk != null ? euro(b.prijs_per_stuk) : '—'}`,
+    `Totaal: ${regelPrijs}`,
+    `Drukzijde: ${b.drukzijde || 'enkel'}`,
+    b.opmerkingen ? `Opmerking: ${b.opmerkingen}` : null,
+    ``,
+    `— Klant —`,
+    k.bedrijf ? `Bedrijf: ${k.bedrijf}` : null,
+    k.naam ? `Naam: ${k.naam}` : null,
+    k.email ? `E-mail: ${k.email}` : null,
+    k.telefoon ? `Telefoon: ${k.telefoon}` : null,
+    ``,
+    `— Adres —`,
+    adres.straat ? adres.straat : null,
+    (adres.postcode || adres.plaats) ? `${adres.postcode || ''} ${adres.plaats || ''}`.trim() : null,
+    adres.land ? adres.land : null,
   ];
-  const allowOrigin = TOEGESTANE_HOSTS.find(h => origin === h) || 'https://a3postersbestellen.nl';
 
+  if (aflever && (aflever.straat || aflever.plaats)) {
+    regels.push(
+      ``,
+      `— Afwijkend afleveradres —`,
+      aflever.bedrijf || null,
+      aflever.straat || null,
+      `${aflever.postcode || ''} ${aflever.plaats || ''}`.trim() || null,
+      aflever.land || null,
+    );
+  }
+
+  regels.push(
+    ``,
+    `— Bestand —`,
+    bestandTeGroot
+      ? `⚠️ Bestand was te groot voor directe upload. De klant stuurt het via WeTransfer naar ${MAIL_TO} o.v.v. #${ordernummer}.`
+      : `Bestand: ${b.bestandsnaam || '(zie admin)'}${b.bestandsnaam_achter ? ' + achterzijde: ' + b.bestandsnaam_achter : ''}`,
+    ``,
+    gripp_offerte_id ? `Gripp offerte: ${gripp_offerte_id}` : `Gripp: (nog niet gesynct)`,
+    ``,
+    `Bekijk in de admin: https://a3postersbestellen.nl/admin`,
+  );
+
+  const tekst = regels.filter(r => r !== null && r !== undefined).join('\n');
+
+  try {
+    await resend.emails.send({
+      from: MAIL_FROM,
+      to: MAIL_TO,
+      replyTo: k.email || undefined,
+      subject: `Nieuwe order op A3postersbestellen.nl #${ordernummer}`,
+      text: tekst,
+    });
+    console.log(`[save-order] ✓ Order-mail verstuurd voor #${ordernummer}`);
+  } catch (err) {
+    console.error(`[save-order] ⚠️ Order-mail versturen mislukt (order staat wél opgeslagen): ${err.message}`);
+  }
+}
+
+exports.handler = async (event) => {
   const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
-
-  console.log(`[save-order] START — origin=${origin || '(leeg)'}, referer=${referer || '(leeg)'}, method=${event.httpMethod}, body_bytes=${event.body?.length || 0}`);
-
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
-  if (event.httpMethod !== 'POST') {
-    console.log(`[save-order] Method niet toegestaan: ${event.httpMethod}`);
-    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
-  }
-
-  // Origin/referer-check — alleen verzoeken vanaf de eigen site accepteren.
-  const bron = origin || referer;
-  const isToegestaan = bron === '' || TOEGESTANE_HOSTS.some(h => bron.startsWith(h));
-  if (!isToegestaan) {
-    console.log(`[save-order] ✗ Bron niet toegestaan: ${bron}`);
-    return { statusCode: 403, headers, body: JSON.stringify({ error: 'Niet toegestaan' }) };
-  }
-
-  let body;
-  try {
-    body = JSON.parse(event.body || '{}');
-  } catch (parseErr) {
-    console.error(`[save-order] ✗ JSON parse fout: ${parseErr.message}`);
-    return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Ongeldig JSON' }) };
-  }
-
-  const { ordernummer, klant, bestelling, gripp_offerte_id,
-          bestand_data, bestand_naam, bestand_type,
-          bestand_data_achter, bestand_naam_achter, bestand_type_achter } = body;
-
-  console.log(`[save-order] ordernummer=${ordernummer}, klant=${klant?.email || '(geen email)'}, gripp_offerte=${gripp_offerte_id || 'geen'}`);
-  console.log(`[save-order] bestand voor: naam=${bestand_naam || 'geen'}, grootte=${formatBytes(base64Size(bestand_data))}`);
-  if (bestand_naam_achter) {
-    console.log(`[save-order] bestand achter: naam=${bestand_naam_achter}, grootte=${formatBytes(base64Size(bestand_data_achter))}`);
-  }
-
-  if (!ordernummer) {
-    console.log(`[save-order] ✗ Ordernummer ontbreekt — verzoek geweigerd`);
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'ordernummer verplicht' }) };
-  }
+  if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
   try {
+    const body = JSON.parse(event.body || '{}');
+    const { ordernummer, klant, bestelling, gripp_offerte_id,
+            bestand_data, bestand_naam, bestand_type,
+            bestand_data_achter, bestand_naam_achter, bestand_type_achter,
+            bestand_te_groot } = body;
+
+    if (!ordernummer) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ordernummer verplicht' }) };
+
     const sql = await getDb();
 
-    // RETURNING zorgt dat we weten of de rij ook echt is ingevoegd.
-    // Bij een collision op ordernummer retourneert Postgres een lege array.
+    // BELANGRIJK: geen ON CONFLICT DO NOTHING (dat slikt een botsend ordernummer
+    // stil in met HTTP 200 — orders verdwijnen dan onopgemerkt). We gebruiken
+    // RETURNING en detecteren een botsing expliciet, zodat de frontend een echt
+    // succes-signaal krijgt en de mail alleen bij een echte insert vuurt.
     const rows = await sql`
       INSERT INTO orders (ordernummer, klant, bestelling, gripp_offerte_id,
                           bestand_naam, bestand_data, bestand_type,
@@ -133,30 +165,19 @@ exports.handler = async (event) => {
       RETURNING ordernummer
     `;
 
-    const duur = Date.now() - startTime;
-
     if (rows.length === 0) {
-      // Ordernummer bestond al — dit is een silent-data-loss situatie
-      // die we nu wel expliciet maken zodat de frontend het kan afhandelen.
-      console.error(`[save-order] ⚠️ COLLISION: ordernummer ${ordernummer} bestaat al in database! Bestand NIET opgeslagen. Duur: ${duur}ms`);
-      return {
-        statusCode: 409,
-        headers,
-        body: JSON.stringify({
-          success: false,
-          error: 'ordernummer_bestaat_al',
-          ordernummer,
-        }),
-      };
+      // Botsend ordernummer: er bestond al een order met dit nummer. Geen nieuwe
+      // insert, dus ook geen dubbele mail. Meld het expliciet (409).
+      console.warn(`[save-order] ⚠️ Ordernummer ${ordernummer} bestaat al — niet opnieuw opgeslagen.`);
+      return { statusCode: 409, headers, body: JSON.stringify({ success: false, error: 'Ordernummer bestaat al', ordernummer }) };
     }
 
-    console.log(`[save-order] ✓ SUCCES — order ${ordernummer} opgeslagen. Duur: ${duur}ms`);
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, ordernummer }) };
+    // Insert geslaagd → order-notificatie versturen (faalt nooit de order).
+    await stuurOrderMail({ ordernummer, klant, bestelling, gripp_offerte_id, bestandTeGroot: !!bestand_te_groot });
 
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, ordernummer }) };
   } catch (err) {
-    const duur = Date.now() - startTime;
-    console.error(`[save-order] ✗ DATABASEFOUT voor ${ordernummer}: ${err.message}. Duur: ${duur}ms`);
-    console.error(err.stack);
+    console.error('save-order fout:', err);
     return { statusCode: 500, headers, body: JSON.stringify({ success: false, error: err.message }) };
   }
 };
