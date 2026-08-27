@@ -79,6 +79,22 @@ function extractAdres(klant = {}) {
   };
 }
 
+// Splitst een NL-adresstring ("Berenkoog 11", "Ligne 2A", "Da Costakade 158-3")
+// in straatnaam en huisnummer. Gripp heeft aparte velden visitingaddress_street
+// en visitingaddress_streetnumber. Nederlandse adressen zetten het nummer achteraan;
+// we pakken de laatste groep die met een cijfer begint (incl. toevoeging als 11A of 158-3).
+// Lukt het splitsen niet, dan gaat de hele string als straat mee en blijft nummer leeg.
+function splitStraatNummer(adresString) {
+  const s = (adresString || '').trim();
+  if (!s) return { street: '', number: '' };
+  // Match: alles vóór het laatste huisnummer = straat; het nummer + evt. toevoeging = number.
+  const m = s.match(/^(.*?)\s+(\d+\s*[-–]?\s*[a-zA-Z]?\d*.*)$/);
+  if (m) {
+    return { street: m[1].trim(), number: m[2].trim() };
+  }
+  return { street: s, number: '' };
+}
+
 // De frontend stuurt het afwijkend afleveradres als klant.afleveradres
 // (genest object, zonder underscore). Fallbacks voor andere naamgeving
 // blijven staan voor het geval dat ooit verandert.
@@ -240,15 +256,22 @@ async function haalProductId(token) {
 
 // Bouwt een object met company-adresvelden, maar ALLEEN de velden die
 // daadwerkelijk gevuld zijn. Zo overschrijven we bij een update nooit
-// bestaande gegevens in Gripp met een lege string. `country` sturen we alleen
-// mee als er een echte waarde is (niet de generieke fallback 'Nederland'),
-// zodat een bestaande landregistratie niet onbedoeld wordt overschreven.
+// bestaande gegevens in Gripp met een lege string.
+//
+// BELANGRIJK: Gripp gebruikt voor het zichtbare Bezoekadres op een company de
+// velden visitingaddress_street / _streetnumber / _zipcode / _city / _country
+// (geverifieerd via de officiële API-velddocumentatie). De eerder gebruikte
+// namen address/zipcode/city BESTAAN NIET en werden stil genegeerd (HTTP 200,
+// leeg Bezoekadres) — dezelfde valkuil als destijds bij workdeliveraddress.
+// Straat en huisnummer zijn APARTE velden, dus we splitsen de adresstring.
 function companyAdresVelden(klant, adresInfo, { inclusiefContact = true } = {}) {
   const velden = {};
-  if (adresInfo.adres)    velden.address = adresInfo.adres;
-  if (adresInfo.postcode) velden.zipcode = adresInfo.postcode;
-  if (adresInfo.stad)     velden.city    = adresInfo.stad;
-  if (adresInfo.land)     velden.country = adresInfo.land;
+  const { street, number } = splitStraatNummer(adresInfo.adres);
+  if (street)             velden.visitingaddress_street       = street;
+  if (number)             velden.visitingaddress_streetnumber = number;
+  if (adresInfo.postcode) velden.visitingaddress_zipcode      = adresInfo.postcode;
+  if (adresInfo.stad)     velden.visitingaddress_city         = adresInfo.stad;
+  if (adresInfo.land)     velden.visitingaddress_country      = adresInfo.land;
   if (inclusiefContact) {
     if (klant.telefoon) velden.phone = klant.telefoon;
     if (klant.email)    velden.email = klant.email;
@@ -312,6 +335,10 @@ async function zoekOfMaakRelatie(token, klant) {
 
   console.log(`[gripp-order] Nieuwe relatie aanmaken — bedrijf="${klant.bedrijf || klant.naam || klant.email}", adres="${adresInfo.adres}", postcode="${adresInfo.postcode}", stad="${adresInfo.stad}"`);
 
+  // Adresvelden via dezelfde helper als de update, zodat create en update
+  // exact dezelfde (geverifieerde) visitingaddress_*-velden gebruiken.
+  const adresVelden = companyAdresVelden(klant, adresInfo, { inclusiefContact: false });
+
   const nieuw = await gripp(token, [{
     method: 'company.create',
     params: [{
@@ -319,10 +346,7 @@ async function zoekOfMaakRelatie(token, klant) {
       email:       klant.email,
       cocnumber:   klant.kvk || '',
       phone:       klant.telefoon || '',
-      address:     adresInfo.adres,
-      zipcode:     adresInfo.postcode,
-      city:        adresInfo.stad,
-      country:     adresInfo.land,
+      ...adresVelden,
       relationtype: { id: 1 },
     }],
     id: 1,
@@ -330,7 +354,7 @@ async function zoekOfMaakRelatie(token, klant) {
 
   const id = nieuw[0]?.result?.id || nieuw[0]?.result?.recordid;
   if (!id) throw new Error('Relatie aanmaken mislukt: ' + JSON.stringify(nieuw[0]?.result));
-  console.log(`[gripp-order] ✓ Nieuwe relatie aangemaakt: id=${id}`);
+  console.log(`[gripp-order] ✓ Nieuwe relatie aangemaakt: id=${id} (adresvelden: ${Object.keys(adresVelden).join(', ') || 'geen'})`);
   return id;
 }
 
