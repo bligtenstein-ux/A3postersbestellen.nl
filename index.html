@@ -1653,7 +1653,7 @@
         <div class="editor-drop-tags">
           <span class="editor-drop-tag">PDF &amp; afbeeldingen</span>
           <span class="editor-drop-tag">297 × 420 mm (A3)</span>
-          <span class="editor-drop-tag">Max. 4 MB</span>
+          <span class="editor-drop-tag">Tot 4 MB direct</span>
         </div>
       </div>
 
@@ -1724,7 +1724,7 @@
         <div class="editor-drop-zone" id="achterUploadZone">
           <input type="file" id="fileInputAchter" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp" onchange="handleFileAchter(this.files[0])">
           <div class="editor-drop-title">Sleep de achterzijde hierheen of klik om te uploaden</div>
-          <div class="editor-drop-sub">PDF, PNG of JPG — max. 4 MB</div>
+          <div class="editor-drop-sub">PDF, PNG of JPG — tot 4 MB direct, groter kan via WeTransfer</div>
         </div>
         <div class="achter-file-strip" id="achterFileStrip">
           <span class="achter-check">&#10003;</span>
@@ -2006,10 +2006,13 @@
   function handleFileAchter(file) {
     if (!file) return;
     if (file.size > MAX_UPLOAD_BYTES) {
-      alert('Je bestand is ' + (file.size/1024/1024).toFixed(1) + ' MB. Het maximum is ' + MAX_UPLOAD_MB + ' MB.\n\n' +
-            'Maak je bestand kleiner (bijv. de PDF comprimeren), of mail het na het bestellen naar print@extern.nl ' +
-            'onder vermelding van je ordernummer, dan verwerken wij het handmatig.');
-      return;
+      // Niet blokkeren — zie handleFile. Bestand mag mee als state, maar wordt
+      // niet geüpload; klant stuurt het via WeTransfer na.
+      alert('Let op: je achterzijde-bestand is ' + (file.size/1024/1024).toFixed(1) + ' MB, groter dan ' + MAX_UPLOAD_MB + ' MB.\n\n' +
+            'Je kunt gewoon bestellen — maar dit bestand wordt niet direct meegestuurd. ' +
+            'Na het plaatsen van je order vragen we je het via WeTransfer naar ' +
+            'print@extern.nl te sturen onder vermelding van je ordernummer.');
+      // Bewust GEEN return.
     }
     state.fileAchter = file;
     const zone = $('achterUploadZone');
@@ -2420,10 +2423,13 @@
   function handleFile(file) {
     if(!file) return;
     if(file.size > MAX_UPLOAD_BYTES) {
-      alert('Je bestand is ' + (file.size/1024/1024).toFixed(1) + ' MB. Het maximum is ' + MAX_UPLOAD_MB + ' MB.\n\n' +
-            'Maak je bestand kleiner (bijv. de PDF comprimeren), of mail het na het bestellen naar print@extern.nl ' +
-            'onder vermelding van je ordernummer, dan verwerken wij het handmatig.');
-      return;
+      // Niet blokkeren: de klant mag bestellen, maar het bestand gaat niet mee in
+      // de upload (te groot voor de payload) en moet via WeTransfer nagestuurd.
+      alert('Let op: je bestand is ' + (file.size/1024/1024).toFixed(1) + ' MB, groter dan ' + MAX_UPLOAD_MB + ' MB.\n\n' +
+            'Je kunt gewoon bestellen — maar je drukbestand wordt dan niet direct meegestuurd. ' +
+            'Na het plaatsen van je order vragen we je het bestand via WeTransfer naar ' +
+            'print@extern.nl te sturen onder vermelding van je ordernummer.');
+      // Bewust GEEN return: bestand wordt wel als state.file gezet voor de preview.
     }
     state.file = file;
     origFile = file;
@@ -2546,19 +2552,13 @@
     if (!state.file || !email.includes('@')) return;
     if (state.drukzijde === 'dubbel' && !state.fileAchter) return;
 
-    // Vangnet: controleer bestandsgrootte(s) vóór verzenden. Netlify weigert
-    // payloads boven ~6 MB; groter bestand → order bereikt de server nooit.
-    // We checken elk bestand afzonderlijk tegen de limiet.
-    const teGroot = [state.file, state.fileAchter]
-      .filter(Boolean)
-      .find(f => f.size > MAX_UPLOAD_BYTES);
-    if (teGroot) {
-      alert('Je bestand "' + teGroot.name + '" is ' + (teGroot.size/1024/1024).toFixed(1) +
-            ' MB. Het maximum is ' + MAX_UPLOAD_MB + ' MB.\n\n' +
-            'Maak het bestand kleiner (bijv. de PDF comprimeren), of neem contact met ons op ' +
-            'via print@extern.nl, dan verwerken wij het handmatig.');
-      return;
-    }
+    // Bestanden >4 MB kunnen niet mee door de function-payload (~6 MB Netlify-
+    // limiet, base64 +33%, naar twee functions). Vroeger blokkeerde dit de order.
+    // Nu laten we de order WEL doorgaan, maar sturen het te grote bestand NIET mee
+    // — de klant krijgt na plaatsing de instructie het via WeTransfer te mailen.
+    const voorTeGroot   = state.file        && state.file.size        > MAX_UPLOAD_BYTES;
+    const achterTeGroot = state.fileAchter  && state.fileAchter.size  > MAX_UPLOAD_BYTES;
+    const bestandTeGroot = voorTeGroot || achterTeGroot;
 
     const btn = $('orderBtn');
     btn.innerHTML = '<div class="spinner"></div> Bestelling verwerken...';
@@ -2610,10 +2610,12 @@
     });
 
     try {
-      // Stap 1: bestand(en) als base64 lezen
+      // Stap 1: bestand(en) als base64 lezen — MAAR een te groot bestand slaan we
+      // over (dat past niet in de payload). De order gaat wel door; het bestand
+      // volgt via WeTransfer. bestand_te_groot wordt aan de backend doorgegeven.
       btn.innerHTML = '<div class="spinner"></div> Bestand uploaden...';
-      const bestandBase64       = await leesBase64(state.file);
-      const bestandAchterBase64 = state.fileAchter ? await leesBase64(state.fileAchter) : null;
+      const bestandBase64       = voorTeGroot   ? null : await leesBase64(state.file);
+      const bestandAchterBase64 = (state.fileAchter && !achterTeGroot) ? await leesBase64(state.fileAchter) : null;
 
       // Stap 2: order naar Gripp sturen
       btn.innerHTML = '<div class="spinner"></div> Order verwerken...';
@@ -2651,6 +2653,7 @@
             bestand_data_achter: bestandAchterBase64,
             bestand_naam_achter: state.fileAchter ? state.fileAchter.name : null,
             bestand_type_achter: state.fileAchter ? state.fileAchter.type : null,
+            bestand_te_groot: bestandTeGroot,
           }),
         });
         opgeslagen = saveResp.ok;
@@ -2678,6 +2681,17 @@
       $('successOrderNum').textContent = '#' + ordernummer;
       $('successEmail').textContent    = email;
       $('successOverlay').classList.add('visible');
+
+      // Was een bestand te groot om mee te sturen? Dan is de order wél geplaatst,
+      // maar moet de klant het drukbestand nog via WeTransfer nasturen.
+      if (bestandTeGroot) {
+        alert('Je bestelling #' + ordernummer + ' is geplaatst!\n\n' +
+              'Let op: je drukbestand is groter dan ' + MAX_UPLOAD_MB + ' MB en kon niet ' +
+              'direct worden meegestuurd. Stuur je bestand via WeTransfer ' +
+              '(wetransfer.com) naar print@extern.nl, onder vermelding van ' +
+              'ordernummer #' + ordernummer + '.\n\n' +
+              'Zodra wij je bestand hebben, gaan wij direct aan de slag.');
+      }
 
       // Conversie-tracking (Google Analytics / Ads) — vuurt alleen bij een
       // succesvol opgeslagen order, zodat je Ads-data geen nep-conversies bevat.
