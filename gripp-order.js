@@ -30,7 +30,7 @@ const TAG_COMMUNICATIE = 19; // Gripp-tag "Communicatie" — automatisch op elke
 // gripp-diag.js (?offerte=PS-... toont het identity-veld van een bestaande
 // a3-offerte, die al onder de juiste identiteit valt).
 // Zolang dit null is, wordt identity NIET meegestuurd (veilig — geen gok).
-const GRIPP_IDENTITY_ID = null; // ← vervang door het juiste getal, bv. 2
+const GRIPP_IDENTITY_ID = 2; // Buro Extern BV — geverifieerd via gripp-diag (offerte PS-78636)
 
 const STAFFEL = [
   { min: 1,   max: 9,   prijs: 4.95 },
@@ -330,10 +330,18 @@ async function werkAdresBij(token, companyId, klant, adresInfo) {
 async function zoekOfMaakRelatie(token, klant) {
   const adresInfo = extractAdres(klant);
 
+  // BELANGRIJK: company.search BESTAAT NIET in Gripp (geeft error
+  // "API_search() does not exist"). De juiste lees-methode is company.get met
+  // [[filters], { paging }]. Geverifieerd via gripp-diag. Dit was de oorzaak van
+  // de duplicaat-relaties: elke zoekopdracht faalde stil, dus werd er telkens
+  // een nieuwe company aangemaakt.
   if (klant.kvk) {
     const res = await gripp(token, [{
-      method: 'company.search',
-      params: [[{ field: 'company.cocnumber', operator: 'equals', value: klant.kvk }], {}, 1, 0],
+      method: 'company.get',
+      params: [
+        [{ field: 'company.cocnumber', operator: 'equals', value: klant.kvk }],
+        { paging: { firstresult: 0, maxresults: 1 } },
+      ],
       id: 1,
     }]);
     const rows = res[0]?.result?.rows;
@@ -346,8 +354,11 @@ async function zoekOfMaakRelatie(token, klant) {
   }
 
   const res2 = await gripp(token, [{
-    method: 'company.search',
-    params: [[{ field: 'company.email', operator: 'equals', value: klant.email }], {}, 1, 0],
+    method: 'company.get',
+    params: [
+      [{ field: 'company.email', operator: 'equals', value: klant.email }],
+      { paging: { firstresult: 0, maxresults: 1 } },
+    ],
     id: 1,
   }]);
   const rows2 = res2[0]?.result?.rows;
