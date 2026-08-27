@@ -1,0 +1,605 @@
+// netlify/functions/gripp-order.js
+// Gripp koppeling voor a3postersbestellen.nl
+//
+// Environment variables (Netlify → Site settings → Environment):
+//   GRIPP_API_TOKEN — jouw Gripp API token
+//
+// Wijzigingen t.o.v. vorige versie:
+//   - Bestemming-adres logica: afwijkend afleveradres krijgt voorrang,
+//     valt terug op factuuradres als er geen afwijkend is opgegeven.
+//   - Adres wordt bovenaan de offerte-omschrijving gezet zodat het meteen
+//     zichtbaar is bij het openen van de offerte in Gripp.
+//   - Poging om Gripp's Bestemming-veld te vullen (deliveryaddress).
+//     Als dat veld niet aankomt, is het adres alsnog leesbaar via de
+//     omschrijving. Logs tonen exact wat er is meegestuurd.
+//   - Defensieve adres-extractie (accepteert meerdere veldnamen).
+
+const GRIPP_API      = 'https://api.gripp.com/public/api3.php';
+const TEMPLATE_ID    = 40; // Buro Extern sjabloon
+const PRODUCT_NUMMER = '1041'; // Drukwerk
+const PAPIERSOORT    = '170 grams Gloss MC';
+const TAG_COMMUNICATIE = 19; // Gripp-tag "Communicatie" — automatisch op elke webshop-offerte
+
+const STAFFEL = [
+  { min: 1,   max: 9,   prijs: 4.95 },
+  { min: 10,  max: 24,  prijs: 3.95 },
+  { min: 25,  max: 49,  prijs: 3.25 },
+  { min: 50,  max: 99,  prijs: 2.75 },
+  { min: 100, max: 249, prijs: 2.25 },
+  { min: 250, max: Infinity, prijs: 1.95 },
+];
+
+function getPrijsPerStuk(aantal) {
+  const tier = STAFFEL.find(t => aantal >= t.min && aantal <= t.max);
+  return tier ? tier.prijs : 1.95;
+}
+
+// ── Gripp API aanroepen ─────────────────────────────────────────────────────
+async function gripp(token, calls) {
+  const resp = await fetch(GRIPP_API, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(calls),
+  });
+  if (!resp.ok) throw new Error(`Gripp HTTP ${resp.status}: ${await resp.text()}`);
+  const data = await resp.json();
+  return Array.isArray(data) ? data : [data];
+}
+
+// ── Defensieve adres-extractie ──────────────────────────────────────────────
+// BELANGRIJK: de frontend stuurt klant.adres als GENEST OBJECT:
+//   { straat: '...', postcode: '...', plaats: '...', land: '...' }
+// Eerdere versie behandelde klant.adres als platte string, wat "[object
+// Object]" in Gripp opleverde. Deze versie leest het geneste object correct
+// uit, met fallbacks voor het geval een andere aanroeper wél platte velden
+// of een kant-en-klare string stuurt.
+function extractAdres(klant = {}) {
+  const nested = (klant.adres && typeof klant.adres === 'object') ? klant.adres : null;
+  const adresIsString = typeof klant.adres === 'string' ? klant.adres : null;
+
+  const straat = (nested && (nested.straat || nested.straatnaam || nested.street))
+              || klant.straat || klant.straatnaam || klant.street || '';
+
+  const adres = adresIsString
+             || (nested && (nested.adres || nested.address))
+             || klant.address
+             || straat; // "straat" bevat op deze site al "Straat en huisnummer" samen
+
+  return {
+    adres,
+    postcode: (nested && (nested.postcode || nested.zipcode || nested.postalcode))
+           || klant.postcode || klant.zipcode || klant.postalcode || '',
+    stad:     (nested && (nested.stad || nested.plaats || nested.city))
+           || klant.stad || klant.plaats || klant.city || '',
+    land:     (nested && (nested.land || nested.country))
+           || klant.land || klant.country || 'Nederland',
+  };
+}
+
+// De frontend stuurt het afwijkend afleveradres als klant.afleveradres
+// (genest object, zonder underscore). Fallbacks voor andere naamgeving
+// blijven staan voor het geval dat ooit verandert.
+function extractAfleveradres(body = {}) {
+  const klant = body.klant || {};
+  const a = klant.afleveradres
+         || klant.aflever_adres
+         || klant.bezorgadres
+         || body.bestelling?.aflever_adres
+         || body.bestelling?.bezorgadres
+         || body.bestelling?.leveradres
+         || null;
+  if (!a || typeof a !== 'object') return null;
+
+  const straat = a.straat || a.straatnaam || a.address || '';
+  if (!straat) return null; // leeg object (bv. toggle uit) telt niet als afwijkend
+
+  return {
+    naam:     a.bedrijf || a.naam || a.name || '',
+    adres:    straat,
+    postcode: a.postcode || a.zipcode || '',
+    stad:     a.stad || a.plaats || a.city || '',
+    land:     a.land || a.country || 'Nederland',
+    email:    a.email || a.emailadres || a['e-mail'] || a['e-mailadres'] || '',
+  };
+}
+
+// ── Bestemming bepalen: afwijkend afleveradres OF factuuradres ──────────────
+// email: mailadres van de klant, komt 2 regels onder het adres in het
+// Gripp Bestemming-veld. Bij een afwijkend afleveradres met eigen mail
+// gebruiken we die; anders vallen we terug op het klant-/factuurmailadres.
+function bepaalBestemming(klant, adresInfo, afleverInfo) {
+  if (afleverInfo) {
+    return {
+      isAfwijkend: true,
+      naam:     afleverInfo.naam || klant.bedrijf || klant.naam || '',
+      adres:    afleverInfo.adres,
+      postcode: afleverInfo.postcode,
+      stad:     afleverInfo.stad,
+      land:     afleverInfo.land,
+      email:    afleverInfo.email || klant.email || '',
+    };
+  }
+  return {
+    isAfwijkend: false,
+    naam:     klant.bedrijf || klant.naam || '',
+    adres:    adresInfo.adres,
+    postcode: adresInfo.postcode,
+    stad:     adresInfo.stad,
+    land:     adresInfo.land,
+    email:    klant.email || '',
+  };
+}
+
+// ── Bestemming formatteren als leesbare tekst ──────────────────────────────
+// Opbouw: adresblok, dan een LEGE REGEL, dan het mailadres van de klant.
+// In een platte string is "2 regels onder het adres" = '\n\n' ertussen.
+// Geen mailadres → geen lege regel, schoon adresblok.
+function formatBestemming(bestemming) {
+  const lines = [];
+  if (bestemming.naam) lines.push(bestemming.naam);
+  if (bestemming.adres) lines.push(bestemming.adres);
+  const postcodeStad = `${bestemming.postcode || ''} ${bestemming.stad || ''}`.trim();
+  if (postcodeStad) lines.push(postcodeStad);
+  if (bestemming.land) lines.push(bestemming.land);
+
+  const adresBlok = lines.join('\n');
+  const mail = (bestemming.email || '').trim();
+  return mail ? adresBlok + '\n\n' + mail : adresBlok;
+}
+
+// ── Bestand uploaden naar Gripp ─────────────────────────────────────────────
+// file.uploadContent(data, name) uploadt een base64-bestand. De officiële
+// docs zeggen "True On Success", maar in de praktijk komt het file-ID terug
+// als result.recordid — dat gebruiken we om het bestand aan de offerte te
+// koppelen (offer.files verwacht een array van integer file-ID's).
+//
+// base64 mag een data:-URL-prefix hebben (bv. "data:application/pdf;base64,...");
+// die knippen we eraf want Gripp verwacht kale base64.
+async function uploadBestand(token, base64, naam) {
+  if (!base64 || !naam) return null;
+
+  const komma = base64.indexOf(',');
+  const kaleData = (base64.startsWith('data:') && komma >= 0)
+    ? base64.slice(komma + 1)
+    : base64;
+
+  try {
+    const res = await gripp(token, [{
+      method: 'file.uploadContent',
+      params: [{ data: kaleData, name: naam }],
+      id: 1,
+    }]);
+    const result = res[0]?.result;
+    const fileId = result?.recordid || result?.id;
+    if (result?.success && fileId) {
+      console.log(`[gripp-order] ✓ Bestand geüpload: "${naam}" → file.id=${fileId}`);
+      return fileId;
+    }
+    console.warn(`[gripp-order] ⚠️ Upload "${naam}" gaf geen file-ID terug: ${JSON.stringify(res[0])}`);
+    return null;
+  } catch (err) {
+    console.error(`[gripp-order] ✗ Upload "${naam}" mislukt: ${err.message}`);
+    return null;
+  }
+}
+
+// ── Product-ID ophalen op productnummer ─────────────────────────────────────
+async function haalProductId(token) {
+  try {
+    const res = await gripp(token, [{
+      method: 'product.get',
+      params: [
+        [{ field: 'product.number', operator: 'equals', value: PRODUCT_NUMMER }],
+        { paging: { firstresult: 0, maxresults: 5 } },
+      ],
+      id: 1,
+    }]);
+    const rows = res[0]?.result?.rows ?? [];
+    if (rows.length > 0) {
+      console.log(`[gripp-order] ✓ Drukwerk gevonden via filter: id=${rows[0].id}, nummer=${rows[0].number}, naam="${rows[0].name}"`);
+      return rows[0].id;
+    }
+    console.log(`[gripp-order] Filter op product.number=${PRODUCT_NUMMER} gaf 0 resultaten — val terug op paginering`);
+  } catch (err) {
+    console.log(`[gripp-order] Filter op product.number gaf fout (val terug op paginering): ${err.message}`);
+  }
+
+  const PAGE_SIZE = 250;
+  for (let pagina = 0; pagina < 20; pagina++) {
+    const offset = pagina * PAGE_SIZE;
+    const res = await gripp(token, [{
+      method: 'product.get',
+      params: [
+        [{ field: 'product.id', operator: 'greaterequals', value: 1 }],
+        {
+          paging: { firstresult: offset, maxresults: PAGE_SIZE },
+          orderings: [{ field: 'product.id', direction: 'asc' }],
+        },
+      ],
+      id: 1,
+    }]);
+    const rows = res[0]?.result?.rows ?? [];
+    for (const row of rows) {
+      const nummer = String(row.number ?? row.productnumber ?? '').trim();
+      if (nummer === PRODUCT_NUMMER) {
+        console.log(`[gripp-order] ✓ Drukwerk gevonden via paginering: id=${row.id}, nummer=${nummer}, naam="${row.name}"`);
+        return row.id;
+      }
+    }
+    if (rows.length < PAGE_SIZE) break;
+  }
+
+  console.log(`[gripp-order] ✗ Drukwerk product met nummer ${PRODUCT_NUMMER} NIET gevonden`);
+  return null;
+}
+
+// ── Klant zoeken of aanmaken ────────────────────────────────────────────────
+
+// Bouwt een object met company-adresvelden, maar ALLEEN de velden die
+// daadwerkelijk gevuld zijn. Zo overschrijven we bij een update nooit
+// bestaande gegevens in Gripp met een lege string. `country` sturen we alleen
+// mee als er een echte waarde is (niet de generieke fallback 'Nederland'),
+// zodat een bestaande landregistratie niet onbedoeld wordt overschreven.
+function companyAdresVelden(klant, adresInfo, { inclusiefContact = true } = {}) {
+  const velden = {};
+  if (adresInfo.adres)    velden.address = adresInfo.adres;
+  if (adresInfo.postcode) velden.zipcode = adresInfo.postcode;
+  if (adresInfo.stad)     velden.city    = adresInfo.stad;
+  if (adresInfo.land)     velden.country = adresInfo.land;
+  if (inclusiefContact) {
+    if (klant.telefoon) velden.phone = klant.telefoon;
+    if (klant.email)    velden.email = klant.email;
+  }
+  return velden;
+}
+
+// Werkt het adres (en telefoon/e-mail) van een BESTAANDE relatie bij. Alleen
+// niet-lege velden worden meegestuurd, dus bestaande gegevens in Gripp gaan
+// nooit verloren door een lege waarde. Faalt de update, dan blijft de order
+// gewoon doorgaan (we loggen het) — een ontbrekend adres mag geen order blokkeren.
+// Update-signatuur volgt het bewezen patroon uit offer.update: params = [id, {velden}].
+async function werkAdresBij(token, companyId, klant, adresInfo) {
+  const velden = companyAdresVelden(klant, adresInfo);
+  if (Object.keys(velden).length === 0) {
+    console.log(`[gripp-order] Geen adresvelden om bij te werken voor relatie ${companyId}`);
+    return;
+  }
+  try {
+    await gripp(token, [{
+      method: 'company.update',
+      params: [companyId, velden],
+      id: 1,
+    }]);
+    console.log(`[gripp-order] ✓ Adres bijgewerkt op bestaande relatie ${companyId}: ${Object.keys(velden).join(', ')}`);
+  } catch (err) {
+    console.warn(`[gripp-order] ⚠️ Adres bijwerken op relatie ${companyId} mislukt (order gaat door): ${err.message}`);
+  }
+}
+
+async function zoekOfMaakRelatie(token, klant) {
+  const adresInfo = extractAdres(klant);
+
+  if (klant.kvk) {
+    const res = await gripp(token, [{
+      method: 'company.search',
+      params: [[{ field: 'company.cocnumber', operator: 'equals', value: klant.kvk }], {}, 1, 0],
+      id: 1,
+    }]);
+    const rows = res[0]?.result?.rows;
+    if (rows?.length > 0) {
+      const bestaandId = rows[0].id;
+      console.log(`[gripp-order] Bestaande relatie gevonden op KVK: id=${bestaandId}`);
+      await werkAdresBij(token, bestaandId, klant, adresInfo);
+      return bestaandId;
+    }
+  }
+
+  const res2 = await gripp(token, [{
+    method: 'company.search',
+    params: [[{ field: 'company.email', operator: 'equals', value: klant.email }], {}, 1, 0],
+    id: 1,
+  }]);
+  const rows2 = res2[0]?.result?.rows;
+  if (rows2?.length > 0) {
+    const bestaandId = rows2[0].id;
+    console.log(`[gripp-order] Bestaande relatie gevonden op e-mail: id=${bestaandId}`);
+    await werkAdresBij(token, bestaandId, klant, adresInfo);
+    return bestaandId;
+  }
+
+  console.log(`[gripp-order] Nieuwe relatie aanmaken — bedrijf="${klant.bedrijf || klant.naam || klant.email}", adres="${adresInfo.adres}", postcode="${adresInfo.postcode}", stad="${adresInfo.stad}"`);
+
+  const nieuw = await gripp(token, [{
+    method: 'company.create',
+    params: [{
+      companyname: klant.bedrijf || klant.naam || klant.email,
+      email:       klant.email,
+      cocnumber:   klant.kvk || '',
+      phone:       klant.telefoon || '',
+      address:     adresInfo.adres,
+      zipcode:     adresInfo.postcode,
+      city:        adresInfo.stad,
+      country:     adresInfo.land,
+      relationtype: { id: 1 },
+    }],
+    id: 1,
+  }]);
+
+  const id = nieuw[0]?.result?.id || nieuw[0]?.result?.recordid;
+  if (!id) throw new Error('Relatie aanmaken mislukt: ' + JSON.stringify(nieuw[0]?.result));
+  console.log(`[gripp-order] ✓ Nieuwe relatie aangemaakt: id=${id}`);
+  return id;
+}
+
+// ── Offerteregel bouwen ─────────────────────────────────────────────────────
+function maakRegel(productId, aantal, prijs, omschrijving) {
+  return {
+    product:      productId,
+    amount:       aantal,
+    sellingprice: prijs,
+    buyingprice:  0,
+    discount:     0,
+    invoicebasis: 'FIXED',
+    rowtype:      'NORMAL',
+    description:  omschrijving,
+  };
+}
+
+// ── Bewerkingsinstructies (rotatie / passend / vullend) ────────────────────
+// Het originele bestand wordt ongewijzigd doorgegeven. Deze instructies
+// vertellen de drukker wat de klant heeft aangevraagd voor de opmaak.
+function bewerkingInstructies(bewerking) {
+  if (!bewerking || typeof bewerking !== 'object') return [];
+  const parts = [];
+  if (bewerking.rotatie && bewerking.rotatie !== 0) {
+    parts.push(`Rotatie: ${bewerking.rotatie}°`);
+  }
+  if (bewerking.fit_mode === 'contain') {
+    parts.push('Passend op A3 (witruimte rondom, verhouding behouden)');
+  } else if (bewerking.fit_mode === 'cover') {
+    parts.push('Vullend op A3 (afsnijding aan randen, verhouding behouden)');
+  }
+  if (parts.length === 0) return [];
+  return ['', '── DRUKINSTRUCTIES ──', ...parts];
+}
+
+// ── Beschrijving voor de offerte ────────────────────────────────────────────
+// De bestemming staat al apart in het Gripp "Bestemming"-veld
+// (workdeliveraddress) — dus die wordt hier niet meer herhaald.
+function bouwOfferteBeschrijving({ aantal, prijsPerStuk, methode, bestelling,
+                                    klant, adresInfo, bestemming }) {
+  const regels = [
+    `Bestelling: ${aantal}× A3 poster`,
+    `Papiersoort: ${PAPIERSOORT}`,
+    `Prijs p/st: €${prijsPerStuk.toFixed(2)}`,
+    bestelling.drukzijde ? `Drukzijde: ${bestelling.drukzijde}` : '',
+    // Bewerkingsinstructies (rotatie / passend / vullend) — het originele
+    // bestand is ongewijzigd, deze instructies moeten bij druk worden toegepast.
+    ...bewerkingInstructies(bestelling.bewerking),
+    '',
+    '── Klant ──',
+    klant.bedrijf  ? `Bedrijf: ${klant.bedrijf}`   : '',
+    klant.naam     ? `Naam: ${klant.naam}`         : '',
+    klant.email    ? `E-mail: ${klant.email}`      : '',
+    klant.telefoon ? `Telefoon: ${klant.telefoon}` : '',
+    klant.kvk      ? `KVK: ${klant.kvk}`           : '',
+  ];
+
+  // Toon factuuradres apart alleen als het afwijkt van de bestemming
+  if (bestemming.isAfwijkend) {
+    regels.push(
+      '',
+      '── Factuuradres ──',
+      adresInfo.adres || '(niet opgegeven)',
+      `${adresInfo.postcode} ${adresInfo.stad}`.trim(),
+      adresInfo.land,
+    );
+  }
+
+  regels.push(
+    '',
+    methode === 'afhalen'
+      ? 'Verzending: Afhalen te Alkmaar (gratis)'
+      : `Verzending: gratis (${bestelling.verzendland || bestemming.land || 'NL'})`,
+    bestelling.opmerkingen ? `Opmerking: ${bestelling.opmerkingen}` : '',
+    bestelling.bestandsnaam ? `Bestand: ${bestelling.bestandsnaam}` : '',
+  );
+
+  return regels
+    .filter(r => r !== false && r !== null && r !== undefined)
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n');
+}
+
+// ── Testmodus ───────────────────────────────────────────────────────────────
+async function testVerbinding(token) {
+  const productId = await haalProductId(token);
+  return {
+    DRUKWERK_1041: {
+      nummer:   PRODUCT_NUMMER,
+      gevonden: !!productId,
+      gripp_id: productId || null,
+    },
+  };
+}
+
+// ── Hoofd handler ───────────────────────────────────────────────────────────
+exports.handler = async (event) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Secret',
+  };
+
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
+  if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+
+  try {
+    const body = JSON.parse(event.body || '{}');
+
+    const token = body.gripp_token || process.env.GRIPP_API_TOKEN || '';
+    if (!token) {
+      return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'GRIPP_API_TOKEN niet ingesteld' }) };
+    }
+
+    if (body.test === true) {
+      const resultaat = await testVerbinding(token);
+      const alleGevonden = Object.values(resultaat).every(r => r.gevonden);
+      return { statusCode: 200, headers, body: JSON.stringify({ success: true, test: true, alleGevonden, producten: resultaat }) };
+    }
+
+    const { klant, bestelling } = body;
+    if (!klant?.email) {
+      return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'klant.email verplicht' }) };
+    }
+    if (!bestelling?.aantal || bestelling.aantal < 1) {
+      return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'bestelling.aantal verplicht' }) };
+    }
+
+    // Log binnenkomende velden (helpt bij debuggen van naming issues)
+    console.log(`[gripp-order] Binnenkomend — klant velden: ${Object.keys(klant || {}).join(', ')}`);
+    console.log(`[gripp-order] Binnenkomend — bestelling velden: ${Object.keys(bestelling || {}).join(', ')}`);
+
+    // Adressen extraheren en bestemming bepalen
+    const adresInfo   = extractAdres(klant);
+    const afleverInfo = extractAfleveradres(body);
+    const bestemming  = bepaalBestemming(klant, adresInfo, afleverInfo);
+
+    console.log(`[gripp-order] Factuuradres: "${adresInfo.adres}" — ${adresInfo.postcode} ${adresInfo.stad}, ${adresInfo.land}`);
+    if (afleverInfo) {
+      console.log(`[gripp-order] Afwijkend afleveradres: "${afleverInfo.adres}" — ${afleverInfo.postcode} ${afleverInfo.stad}`);
+    }
+    console.log(`[gripp-order] BESTEMMING (${bestemming.isAfwijkend ? 'afwijkend' : 'zelfde als klant'}): "${bestemming.adres}" — ${bestemming.postcode} ${bestemming.stad}, mail=${bestemming.email || '(geen)'}`);
+
+    if (!bestemming.adres) {
+      console.warn(`[gripp-order] ⚠️ GEEN BESTEMMING! klant object: ${JSON.stringify(klant)}`);
+    }
+
+    const productId = await haalProductId(token);
+    if (!productId) throw new Error(`Drukwerk product met nummer ${PRODUCT_NUMMER} niet gevonden in Gripp.`);
+
+    const companyId = await zoekOfMaakRelatie(token, klant);
+
+    const aantal       = parseInt(bestelling.aantal);
+    const prijsPerStuk = bestelling.prijs_per_stuk ?? getPrijsPerStuk(aantal);
+    const methode      = bestelling.verzendmethode ?? 'verzenden';
+    const ordernummer  = bestelling.ordernummer || `PS-${Date.now()}`;
+
+    // Offerteregels
+    const offerlines = [];
+    const bestandsinfo = bestelling.bestandsnaam ? ` (bestand: ${bestelling.bestandsnaam})` : '';
+    offerlines.push(maakRegel(productId, aantal, prijsPerStuk, `A3 poster full color — ${PAPIERSOORT}${bestandsinfo}`));
+
+    if (bestelling.korting?.bedrag > 0) {
+      offerlines.push(maakRegel(
+        productId,
+        1,
+        -Math.abs(bestelling.korting.bedrag),
+        `Korting${bestelling.korting.code ? ' — ' + bestelling.korting.code : ''}`,
+      ));
+    }
+
+    const today   = new Date().toISOString().split('T')[0];
+    const subject = `A3 poster order ${ordernummer}`;
+    const description = bouwOfferteBeschrijving({
+      aantal, prijsPerStuk, methode, bestelling, klant, adresInfo, bestemming,
+    });
+
+    // Bestemming als tekst voor Gripp's Bestemming-veld
+    const bestemmingText = formatBestemming(bestemming);
+
+    // ── Drukbestand(en) uploaden naar Gripp en aan de offerte koppelen ──────
+    // De frontend stuurt de base64 mee (dezelfde velden als naar save-order).
+    // We geven het bestand een naam met het ordernummer erin, zodat het in
+    // Gripp herkenbaar bij de juiste order hoort.
+    const fileIds = [];
+
+    if (body.bestand_data) {
+      const naamVoor = `${ordernummer}-${bestelling.bestandsnaam || body.bestand_naam || 'voorzijde'}`;
+      const idVoor = await uploadBestand(token, body.bestand_data, naamVoor);
+      if (idVoor) fileIds.push(idVoor);
+    } else {
+      console.log('[gripp-order] Geen bestand_data meegestuurd — geen bijlage geüpload naar Gripp.');
+    }
+
+    if (body.bestand_data_achter) {
+      const naamAchter = `${ordernummer}-achterzijde-${bestelling.bestandsnaam_achter || body.bestand_naam_achter || 'achterzijde'}`;
+      const idAchter = await uploadBestand(token, body.bestand_data_achter, naamAchter);
+      if (idAchter) fileIds.push(idAchter);
+    }
+
+    console.log(`[gripp-order] ${fileIds.length} bestand(en) gekoppeld aan offerte: [${fileIds.join(', ')}]`);
+
+    // Offerte params. We proberen meerdere mogelijke veldnamen voor het
+    // Bestemming-veld — Gripp negeert onbekende velden dus dit is veilig.
+    const offerteParams = {
+      company:          companyId,
+      template:         TEMPLATE_ID,
+      name:             `A3 Poster ${ordernummer}`,
+      subject,
+      description,
+      date:             today,
+      status:           'CONCEPT',
+      offerlines,
+      // Bestemming-veld — bevestigd via Gripp's officiële API-documentatie:
+      // het veld heet "workdeliveraddress" (niet deliveryaddress/destination
+      // zoals eerder gegokt).
+      workdeliveraddress: bestemmingText,
+      tags:               [TAG_COMMUNICATIE],
+    };
+
+    // Alleen meesturen als er daadwerkelijk bestanden zijn geüpload.
+    if (fileIds.length > 0) {
+      offerteParams.files = fileIds;
+    }
+
+    console.log(`[gripp-order] Offerte aanmaken: ${offerlines.length} regels, company=${companyId}, order=${ordernummer}, template=${TEMPLATE_ID}`);
+    console.log(`[gripp-order] Bestemming-tekst die naar Gripp gaat:\n${bestemmingText}`);
+
+    const offerteResp = await gripp(token, [{
+      method: 'offer.create',
+      params: [offerteParams],
+      id: 1,
+    }]);
+
+    const result    = offerteResp[0]?.result;
+    const offerteId = result?.id || result?.recordid;
+    if (!offerteId) throw new Error('Offerte aanmaken mislukt: ' + JSON.stringify(result));
+
+    console.log(`[gripp-order] ✓ Offerte ${offerteId} aangemaakt voor ${ordernummer}`);
+
+    // Fallback: mocht offer.create het files-veld niet meepakken, koppel de
+    // bestanden alsnog via offer.update. Faalt dit, dan blijft de offerte
+    // gewoon bestaan (zonder bijlage) — we loggen het en gaan door.
+    if (fileIds.length > 0) {
+      try {
+        await gripp(token, [{
+          method: 'offer.update',
+          params: [offerteId, { files: fileIds }],
+          id: 1,
+        }]);
+        console.log(`[gripp-order] ✓ Bestanden gekoppeld via offer.update aan offerte ${offerteId}`);
+      } catch (updErr) {
+        console.warn(`[gripp-order] ⚠️ offer.update voor bestanden mislukt (offerte bestaat wel): ${updErr.message}`);
+      }
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success:          true,
+        gripp_offerte_id: offerteId,
+        company_id:       companyId,
+        ordernummer,
+      }),
+    };
+
+  } catch (err) {
+    console.error('[gripp-order] fout:', err);
+    return { statusCode: 500, headers, body: JSON.stringify({ success: false, error: err.message }) };
+  }
+};
