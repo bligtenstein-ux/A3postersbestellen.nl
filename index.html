@@ -2162,6 +2162,7 @@
     highlightTier(); updatePrice();
   }
   function changeQty(d) {
+    if (ontwerpen.length > 0) return; // teller toont dan het totaal (read-only)
     state.qty=Math.max(1,Math.min(9999,state.qty+d));
     $('qtyInput').value=state.qty;
     syncDirectInput();
@@ -2169,6 +2170,7 @@
     highlightTier(); updatePrice();
   }
   function onQtyInput(v) {
+    if (ontwerpen.length > 0) { updatePrice(); return; } // genegeerd bij lijst
     state.qty=Math.max(1,Math.min(9999,parseInt(v)||1));
     syncDirectInput();
     state.tierIndex=getTierIdx(state.qty);
@@ -2214,6 +2216,25 @@
     $('breakdownShip').textContent=ship===0?'Gratis':fmt(ship);
     $('breakdownBtw').textContent=fmt(btw);
     $('breakdownTotal').textContent=fmt(total);
+
+    // Grote teller in het overzicht: bij toegevoegde ontwerpen toont die het
+    // TOTAAL aantal posters en zijn de +/- knoppen uit (aantallen worden dan per
+    // ontwerp in de lijst geregeld). Bij een normale enkele bestelling werkt de
+    // teller zoals altijd (bewerkt state.qty).
+    const heeftLijst = ontwerpen.length > 0;
+    const qtyInputEl = $('qtyInput');
+    const qtyRow = qtyInputEl ? qtyInputEl.closest('.qty-row') : null;
+    if (qtyInputEl) {
+      if (heeftLijst) {
+        qtyInputEl.value = totaal;
+        qtyInputEl.readOnly = true;
+        if (qtyRow) qtyRow.querySelectorAll('.qty-btn').forEach(b => { b.disabled = true; b.style.opacity = '0.4'; b.style.cursor = 'not-allowed'; });
+      } else {
+        qtyInputEl.value = state.qty;
+        qtyInputEl.readOnly = false;
+        if (qtyRow) qtyRow.querySelectorAll('.qty-btn').forEach(b => { b.disabled = false; b.style.opacity = ''; b.style.cursor = ''; });
+      }
+    }
 
     // "Bestel X meer"-hint o.b.v. het totaal.
     const tierIdx = getTierIdx(refTotaal);
