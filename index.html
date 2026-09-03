@@ -2101,6 +2101,7 @@
     const strip = $('achterFileStrip');
     if (strip) strip.classList.add('visible');
     updateButton();
+    updatePrice();
   }
 
   function removeFileAchter() {
@@ -2112,6 +2113,7 @@
     const inp = $('fileInputAchter');
     if (inp) inp.value = '';
     updateButton();
+    updatePrice();
   }
 
   function getTierIdx(qty) {
@@ -2579,6 +2581,7 @@
       reader.readAsDataURL(file);
     }
     updateButton();
+    updatePrice();
   }
 
   function resetEditor() {
@@ -2589,6 +2592,7 @@
     $('pdfPageNav').classList.remove('visible');
     $('fileInput').value = '';
     updateButton();
+    updatePrice();
   }
 
   // ── MEERDERE ONTWERPEN ───────────────────────────────────────────────────────
