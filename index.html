@@ -808,6 +808,26 @@
     padding: 4px 8px; border-radius: 6px;
   }
   .ontwerp-remove:hover { background: #fee2e2; color: #dc2626; }
+  .ontwerp-qty {
+    flex: 0 0 auto;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .ontwerp-qty-btn {
+    width: 26px; height: 26px;
+    border: 1px solid var(--line); background: #fff;
+    border-radius: 6px; cursor: pointer;
+    font-size: 15px; line-height: 1; color: var(--ink-mid);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ontwerp-qty-btn:hover { border-color: var(--green); color: var(--green); }
+  .ontwerp-qty-input {
+    width: 46px; height: 26px; text-align: center;
+    border: 1px solid var(--line); border-radius: 6px;
+    font-family: var(--font); font-size: 13px; color: var(--ink);
+    -moz-appearance: textfield;
+  }
+  .ontwerp-qty-input::-webkit-outer-spin-button,
+  .ontwerp-qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .ontwerpen-hint { font-size: 12px; color: var(--ink-mid); margin-top: 8px; }
 
 
@@ -2654,6 +2674,22 @@
     updateButton();
   }
 
+  // Past het aantal van een reeds toegevoegd ontwerp aan. `delta` (+1/-1) voor de
+  // knoppen, of een absolute waarde via het invoerveld (dan delta=null, val=waarde).
+  function wijzigOntwerpAantal(idx, delta, val) {
+    const o = ontwerpen[idx];
+    if (!o) return;
+    let nieuw;
+    if (delta != null) {
+      nieuw = (o.aantal || 1) + delta;
+    } else {
+      nieuw = parseInt(val) || 1;
+    }
+    o.aantal = Math.max(1, Math.min(9999, nieuw));
+    updatePrice();   // hertekent ook de lijst (renderOntwerpen) en herberekent staffel over totaal
+    updateButton();
+  }
+
   // Tekent de lijst met toegevoegde ontwerpen en beheert de toevoegknop-status.
   function renderOntwerpen() {
     const lijst = $('ontwerpenLijst');
@@ -2671,7 +2707,13 @@
         ${thumb}
         <div class="ontwerp-info">
           <div class="ontwerp-naam">${naamEsc}</div>
-          <div class="ontwerp-meta">${o.aantal} stuks · ${zijde}</div>
+          <div class="ontwerp-meta">${zijde}</div>
+        </div>
+        <div class="ontwerp-qty">
+          <button type="button" class="ontwerp-qty-btn" onclick="wijzigOntwerpAantal(${i}, -1)" title="Minder">&minus;</button>
+          <input type="number" class="ontwerp-qty-input" min="1" max="9999" value="${o.aantal}"
+                 onchange="wijzigOntwerpAantal(${i}, null, this.value)" aria-label="Aantal voor dit ontwerp">
+          <button type="button" class="ontwerp-qty-btn" onclick="wijzigOntwerpAantal(${i}, 1)" title="Meer">+</button>
         </div>
         <button class="ontwerp-remove" onclick="verwijderOntwerp(${i})" title="Verwijder dit ontwerp">&times;</button>
       </div>`;
