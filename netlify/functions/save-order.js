@@ -34,6 +34,11 @@ async function getDb() {
   await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS bestand_naam_achter TEXT`;
   await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS bestand_data_achter TEXT`;
   await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS bestand_type_achter TEXT`;
+  // Kolom voor meerdere ontwerpen in één order (JSONB-lijst met per ontwerp:
+  // aantal, drukzijde, prijs_per_stuk, bestandsnaam/naam_achter, bestand_data/type,
+  // bestand_data_achter/type_achter, bestand_te_groot). Backwards-compatible: bij
+  // één ontwerp blijven de losse bestand_*-kolommen gevuld met dat ene bestand.
+  await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS ontwerpen JSONB`;
   return sql;
 }
 
@@ -54,19 +59,41 @@ async function stuurOrderMail({ ordernummer, klant, bestelling, gripp_offerte_id
   const aflever = k.afleveradres || null;
 
   const euro = (n) => '€' + Number(n || 0).toFixed(2).replace('.', ',');
-  const regelPrijs = (b.prijs_per_stuk != null && b.aantal != null)
-    ? euro(b.prijs_per_stuk * b.aantal) : '—';
+
+  // Meerdere ontwerpen? Dan een specificatie per ontwerp + totaalprijs.
+  const ontw = Array.isArray(b.ontwerpen) && b.ontwerpen.length > 1 ? b.ontwerpen : null;
+
+  let bestelBlok;
+  if (ontw) {
+    const totaalPrijs = ontw.reduce((s, o) => s + (Number(o.prijs_per_stuk) || 0) * (o.aantal || 0), 0);
+    bestelBlok = [
+      `— Bestelling — ${b.aantal ?? '—'} posters totaal, ${ontw.length} ontwerpen`,
+      ...ontw.map((o, i) =>
+        `  Ontwerp ${i + 1}: ${o.aantal}× (${o.drukzijde || 'enkel'}) — ${euro(o.prijs_per_stuk)} p/st`
+        + (o.bestandsnaam ? ` — ${o.bestandsnaam}` : '')
+        + (o.bestandsnaam_achter ? ` + achter: ${o.bestandsnaam_achter}` : '')
+      ),
+      `Totaal: ${euro(totaalPrijs)}`,
+      b.opmerkingen ? `Opmerking: ${b.opmerkingen}` : null,
+    ];
+  } else {
+    const regelPrijs = (b.prijs_per_stuk != null && b.aantal != null)
+      ? euro(b.prijs_per_stuk * b.aantal) : '—';
+    bestelBlok = [
+      `— Bestelling —`,
+      `Aantal: ${b.aantal ?? '—'}× A3 poster`,
+      `Prijs p/st: ${b.prijs_per_stuk != null ? euro(b.prijs_per_stuk) : '—'}`,
+      `Totaal: ${regelPrijs}`,
+      `Drukzijde: ${b.drukzijde || 'enkel'}`,
+      b.opmerkingen ? `Opmerking: ${b.opmerkingen}` : null,
+    ];
+  }
 
   // Platte-tekst body — bewust simpel en volledig, ideaal voor de printworkflow.
   const regels = [
     `Nieuwe order: #${ordernummer}`,
     ``,
-    `— Bestelling —`,
-    `Aantal: ${b.aantal ?? '—'}× A3 poster`,
-    `Prijs p/st: ${b.prijs_per_stuk != null ? euro(b.prijs_per_stuk) : '—'}`,
-    `Totaal: ${regelPrijs}`,
-    `Drukzijde: ${b.drukzijde || 'enkel'}`,
-    b.opmerkingen ? `Opmerking: ${b.opmerkingen}` : null,
+    ...bestelBlok,
     ``,
     `— Klant —`,
     k.bedrijf ? `Bedrijf: ${k.bedrijf}` : null,
@@ -133,7 +160,7 @@ exports.handler = async (event) => {
     const { ordernummer, klant, bestelling, gripp_offerte_id,
             bestand_data, bestand_naam, bestand_type,
             bestand_data_achter, bestand_naam_achter, bestand_type_achter,
-            bestand_te_groot } = body;
+            bestand_te_groot, ontwerpen } = body;
 
     if (!ordernummer) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ordernummer verplicht' }) };
 
@@ -147,7 +174,7 @@ exports.handler = async (event) => {
       INSERT INTO orders (ordernummer, klant, bestelling, gripp_offerte_id,
                           bestand_naam, bestand_data, bestand_type,
                           bestand_naam_achter, bestand_data_achter, bestand_type_achter,
-                          status)
+                          ontwerpen, status)
       VALUES (
         ${ordernummer},
         ${JSON.stringify(klant)},
@@ -159,6 +186,7 @@ exports.handler = async (event) => {
         ${bestand_naam_achter || null},
         ${bestand_data_achter || null},
         ${bestand_type_achter || null},
+        ${Array.isArray(ontwerpen) && ontwerpen.length > 0 ? JSON.stringify(ontwerpen) : null},
         'nieuw'
       )
       ON CONFLICT (ordernummer) DO NOTHING

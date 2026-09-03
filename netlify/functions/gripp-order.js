@@ -439,22 +439,53 @@ function bewerkingInstructies(bewerking) {
 // (workdeliveraddress) — dus die wordt hier niet meer herhaald.
 function bouwOfferteBeschrijving({ aantal, prijsPerStuk, methode, bestelling,
                                     klant, adresInfo, bestemming }) {
-  const regels = [
-    `Bestelling: ${aantal}× A3 poster`,
-    `Papiersoort: ${PAPIERSOORT}`,
-    `Prijs p/st: €${prijsPerStuk.toFixed(2)}`,
-    bestelling.drukzijde ? `Drukzijde: ${bestelling.drukzijde}` : '',
-    // Bewerkingsinstructies (rotatie / passend / vullend) — het originele
-    // bestand is ongewijzigd, deze instructies moeten bij druk worden toegepast.
-    ...bewerkingInstructies(bestelling.bewerking),
-    '',
-    '── Klant ──',
-    klant.bedrijf  ? `Bedrijf: ${klant.bedrijf}`   : '',
-    klant.naam     ? `Naam: ${klant.naam}`         : '',
-    klant.email    ? `E-mail: ${klant.email}`      : '',
-    klant.telefoon ? `Telefoon: ${klant.telefoon}` : '',
-    klant.kvk      ? `KVK: ${klant.kvk}`           : '',
-  ];
+  const ontwerpenLijst = Array.isArray(bestelling.ontwerpen) && bestelling.ontwerpen.length > 1
+    ? bestelling.ontwerpen : null;
+
+  let regels;
+  if (ontwerpenLijst) {
+    // Meerdere ontwerpen: overzicht per ontwerp, plus het totaal.
+    regels = [
+      `Bestelling: ${aantal}× A3 poster totaal — ${ontwerpenLijst.length} ontwerpen`,
+      `Papiersoort: ${PAPIERSOORT}`,
+      '',
+      '── Ontwerpen ──',
+    ];
+    ontwerpenLijst.forEach((o, i) => {
+      const zijde = o.drukzijde === 'dubbel' ? 'dubbelzijdig' : 'enkelzijdig';
+      regels.push(
+        `Ontwerp ${i + 1}: ${o.aantal}× (${zijde}) — €${Number(o.prijs_per_stuk).toFixed(2)} p/st`
+        + (o.bestandsnaam ? ` — ${o.bestandsnaam}` : '')
+        + (o.bestandsnaam_achter ? ` + achter: ${o.bestandsnaam_achter}` : '')
+      );
+    });
+    regels.push(
+      '',
+      '── Klant ──',
+      klant.bedrijf  ? `Bedrijf: ${klant.bedrijf}`   : '',
+      klant.naam     ? `Naam: ${klant.naam}`         : '',
+      klant.email    ? `E-mail: ${klant.email}`      : '',
+      klant.telefoon ? `Telefoon: ${klant.telefoon}` : '',
+      klant.kvk      ? `KVK: ${klant.kvk}`           : '',
+    );
+  } else {
+    regels = [
+      `Bestelling: ${aantal}× A3 poster`,
+      `Papiersoort: ${PAPIERSOORT}`,
+      `Prijs p/st: €${prijsPerStuk.toFixed(2)}`,
+      bestelling.drukzijde ? `Drukzijde: ${bestelling.drukzijde}` : '',
+      // Bewerkingsinstructies (rotatie / passend / vullend) — het originele
+      // bestand is ongewijzigd, deze instructies moeten bij druk worden toegepast.
+      ...bewerkingInstructies(bestelling.bewerking),
+      '',
+      '── Klant ──',
+      klant.bedrijf  ? `Bedrijf: ${klant.bedrijf}`   : '',
+      klant.naam     ? `Naam: ${klant.naam}`         : '',
+      klant.email    ? `E-mail: ${klant.email}`      : '',
+      klant.telefoon ? `Telefoon: ${klant.telefoon}` : '',
+      klant.kvk      ? `KVK: ${klant.kvk}`           : '',
+    ];
+  }
 
   // Toon factuuradres apart alleen als het afwijkt van de bestemming
   if (bestemming.isAfwijkend) {
@@ -556,10 +587,29 @@ exports.handler = async (event) => {
     const methode      = bestelling.verzendmethode ?? 'verzenden';
     const ordernummer  = bestelling.ordernummer || `PS-${Date.now()}`;
 
-    // Offerteregels
+    // Offerteregels — één regel per ontwerp. Bij meerdere ontwerpen deelt elke
+    // regel dezelfde staffelprijs (bepaald door het totaal, door de frontend al
+    // per ontwerp meegegeven als prijs_per_stuk). Valt terug op één regel als er
+    // geen ontwerpen[]-lijst is (oude flow / backwards-compatible).
     const offerlines = [];
-    const bestandsinfo = bestelling.bestandsnaam ? ` (bestand: ${bestelling.bestandsnaam})` : '';
-    offerlines.push(maakRegel(productId, aantal, prijsPerStuk, `A3 poster full color — ${PAPIERSOORT}${bestandsinfo}`));
+    const ontwerpenLijst = Array.isArray(body.ontwerpen) && body.ontwerpen.length > 0
+      ? body.ontwerpen : null;
+
+    if (ontwerpenLijst) {
+      ontwerpenLijst.forEach((o, i) => {
+        const oAantal = parseInt(o.aantal) || 0;
+        const oPrijs  = o.prijs_per_stuk ?? prijsPerStuk;
+        const zijde   = o.drukzijde === 'dubbel' ? ' dubbelzijdig' : '';
+        const bnaam   = o.bestandsnaam ? ` (bestand: ${o.bestandsnaam})` : '';
+        offerlines.push(maakRegel(
+          productId, oAantal, oPrijs,
+          `A3 poster full color${zijde} — ${PAPIERSOORT} — ontwerp ${i + 1}${bnaam}`,
+        ));
+      });
+    } else {
+      const bestandsinfo = bestelling.bestandsnaam ? ` (bestand: ${bestelling.bestandsnaam})` : '';
+      offerlines.push(maakRegel(productId, aantal, prijsPerStuk, `A3 poster full color — ${PAPIERSOORT}${bestandsinfo}`));
+    }
 
     if (bestelling.korting?.bedrag > 0) {
       offerlines.push(maakRegel(
@@ -580,23 +630,37 @@ exports.handler = async (event) => {
     const bestemmingText = formatBestemming(bestemming);
 
     // ── Drukbestand(en) uploaden naar Gripp en aan de offerte koppelen ──────
-    // De frontend stuurt de base64 mee (dezelfde velden als naar save-order).
-    // We geven het bestand een naam met het ordernummer erin, zodat het in
-    // Gripp herkenbaar bij de juiste order hoort.
+    // Bij meerdere ontwerpen uploaden we alle bestanden (voor + evt. achter per
+    // ontwerp). Valt terug op de topniveau-velden als er geen ontwerpen[] is.
     const fileIds = [];
 
-    if (body.bestand_data) {
-      const naamVoor = `${ordernummer}-${bestelling.bestandsnaam || body.bestand_naam || 'voorzijde'}`;
-      const idVoor = await uploadBestand(token, body.bestand_data, naamVoor);
-      if (idVoor) fileIds.push(idVoor);
+    if (ontwerpenLijst) {
+      for (let i = 0; i < ontwerpenLijst.length; i++) {
+        const o = ontwerpenLijst[i];
+        if (o.bestand_data) {
+          const naamVoor = `${ordernummer}-ontwerp${i + 1}-${o.bestandsnaam || o.bestand_naam || 'voorzijde'}`;
+          const idVoor = await uploadBestand(token, o.bestand_data, naamVoor);
+          if (idVoor) fileIds.push(idVoor);
+        }
+        if (o.bestand_data_achter) {
+          const naamAchter = `${ordernummer}-ontwerp${i + 1}-achterzijde-${o.bestandsnaam_achter || o.bestand_naam_achter || 'achterzijde'}`;
+          const idAchter = await uploadBestand(token, o.bestand_data_achter, naamAchter);
+          if (idAchter) fileIds.push(idAchter);
+        }
+      }
     } else {
-      console.log('[gripp-order] Geen bestand_data meegestuurd — geen bijlage geüpload naar Gripp.');
-    }
-
-    if (body.bestand_data_achter) {
-      const naamAchter = `${ordernummer}-achterzijde-${bestelling.bestandsnaam_achter || body.bestand_naam_achter || 'achterzijde'}`;
-      const idAchter = await uploadBestand(token, body.bestand_data_achter, naamAchter);
-      if (idAchter) fileIds.push(idAchter);
+      if (body.bestand_data) {
+        const naamVoor = `${ordernummer}-${bestelling.bestandsnaam || body.bestand_naam || 'voorzijde'}`;
+        const idVoor = await uploadBestand(token, body.bestand_data, naamVoor);
+        if (idVoor) fileIds.push(idVoor);
+      } else {
+        console.log('[gripp-order] Geen bestand_data meegestuurd — geen bijlage geüpload naar Gripp.');
+      }
+      if (body.bestand_data_achter) {
+        const naamAchter = `${ordernummer}-achterzijde-${bestelling.bestandsnaam_achter || body.bestand_naam_achter || 'achterzijde'}`;
+        const idAchter = await uploadBestand(token, body.bestand_data_achter, naamAchter);
+        if (idAchter) fileIds.push(idAchter);
+      }
     }
 
     console.log(`[gripp-order] ${fileIds.length} bestand(en) gekoppeld aan offerte: [${fileIds.join(', ')}]`);
