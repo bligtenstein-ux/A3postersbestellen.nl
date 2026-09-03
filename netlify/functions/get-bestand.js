@@ -21,6 +21,7 @@ exports.handler = async (event) => {
 
   const ordernummer = event.queryStringParameters?.ordernummer;
   const zijde       = event.queryStringParameters?.zijde || 'voor';
+  const ontwerpIdx  = event.queryStringParameters?.ontwerp; // optioneel: index in ontwerpen[]
   if (!ordernummer) {
     return { statusCode: 400, headers: { ...cors, 'Content-Type': 'application/json' },
              body: JSON.stringify({ error: 'ordernummer verplicht' }) };
@@ -35,15 +36,35 @@ exports.handler = async (event) => {
                body: JSON.stringify({ error: 'Order niet gevonden' }) };
     }
 
-    const o    = rows[0];
-    const data = zijde === 'achter' ? o.bestand_data_achter : o.bestand_data;
-    const naam = zijde === 'achter' ? (o.bestand_naam_achter || 'achterzijde') : (o.bestand_naam || 'bestand');
-    const type = zijde === 'achter' ? (o.bestand_type_achter || 'application/octet-stream')
-                                    : (o.bestand_type || 'application/octet-stream');
+    const o = rows[0];
+
+    let data, naam, type;
+
+    // Als een ontwerp-index is meegegeven én de order heeft een ontwerpen-lijst,
+    // dan halen we het bestand uit dat specifieke ontwerp (multi-ontwerp orders).
+    // Anders vallen we terug op de losse kolommen (eerste/enige ontwerp).
+    const lijst = Array.isArray(o.ontwerpen) ? o.ontwerpen : null;
+    if (ontwerpIdx != null && lijst && lijst[parseInt(ontwerpIdx)]) {
+      const ont = lijst[parseInt(ontwerpIdx)];
+      if (zijde === 'achter') {
+        data = ont.bestand_data_achter;
+        naam = ont.bestandsnaam_achter || ont.bestand_naam_achter || 'achterzijde';
+        type = ont.bestand_type_achter || 'application/octet-stream';
+      } else {
+        data = ont.bestand_data;
+        naam = ont.bestandsnaam || ont.bestand_naam || 'bestand';
+        type = ont.bestand_type || 'application/octet-stream';
+      }
+    } else {
+      data = zijde === 'achter' ? o.bestand_data_achter : o.bestand_data;
+      naam = zijde === 'achter' ? (o.bestand_naam_achter || 'achterzijde') : (o.bestand_naam || 'bestand');
+      type = zijde === 'achter' ? (o.bestand_type_achter || 'application/octet-stream')
+                                : (o.bestand_type || 'application/octet-stream');
+    }
 
     if (!data) {
       return { statusCode: 404, headers: { ...cors, 'Content-Type': 'application/json' },
-               body: JSON.stringify({ error: 'Geen bestand opgeslagen voor deze order (' + zijde + 'zijde)' }) };
+               body: JSON.stringify({ error: 'Geen bestand opgeslagen voor deze order (' + zijde + 'zijde' + (ontwerpIdx != null ? ', ontwerp ' + ontwerpIdx : '') + ')' }) };
     }
 
     return {
