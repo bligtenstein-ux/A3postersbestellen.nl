@@ -828,6 +828,18 @@
   }
   .ontwerp-qty-input::-webkit-outer-spin-button,
   .ontwerp-qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .huidig-aantal-blok {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: var(--green-light);
+    border: 1px solid var(--green);
+    border-radius: var(--radius-sm);
+  }
+  .huidig-aantal-blok.visible { display: flex; }
+  .huidig-aantal-label { font-size: 13px; font-weight: 600; color: var(--green-dark); }
   .ontwerpen-hint { font-size: 12px; color: var(--ink-mid); margin-top: 8px; }
 
 
@@ -1779,6 +1791,17 @@
 
       </div>
 
+      <!-- Aantal voor het ontwerp dat nu in de editor staat -->
+      <div class="huidig-aantal-blok" id="huidigAantalBlok">
+        <span class="huidig-aantal-label">Aantal van dit ontwerp:</span>
+        <div class="ontwerp-qty">
+          <button type="button" class="ontwerp-qty-btn" onclick="changeQty(-1)" title="Minder">&minus;</button>
+          <input type="number" class="ontwerp-qty-input" id="huidigAantalInput" min="1" max="9999" value="1"
+                 onchange="onQtyInput(this.value)" aria-label="Aantal van dit ontwerp">
+          <button type="button" class="ontwerp-qty-btn" onclick="changeQty(1)" title="Meer">+</button>
+        </div>
+      </div>
+
       <!-- ACHTERZIJDE (alleen zichtbaar bij dubbelzijdig) -->
       <div class="achterzijde-section" id="achterzijdeSection">
         <div class="sectie-header" style="margin-top:1.25rem">
@@ -2154,6 +2177,8 @@
   function syncDirectInput() {
     const el = $('qtyDirect');
     if(el) el.value = state.qty;
+    const h = $('huidigAantalInput');
+    if(h && document.activeElement !== h) h.value = state.qty;
   }
   function syncQtyFromDirect(v) {
     state.qty = Math.max(1, Math.min(9999, parseInt(v)||1));
@@ -2162,7 +2187,6 @@
     highlightTier(); updatePrice();
   }
   function changeQty(d) {
-    if (ontwerpen.length > 0) return; // teller toont dan het totaal (read-only)
     state.qty=Math.max(1,Math.min(9999,state.qty+d));
     $('qtyInput').value=state.qty;
     syncDirectInput();
@@ -2170,7 +2194,6 @@
     highlightTier(); updatePrice();
   }
   function onQtyInput(v) {
-    if (ontwerpen.length > 0) { updatePrice(); return; } // genegeerd bij lijst
     state.qty=Math.max(1,Math.min(9999,parseInt(v)||1));
     syncDirectInput();
     state.tierIndex=getTierIdx(state.qty);
@@ -2217,15 +2240,25 @@
     $('breakdownBtw').textContent=fmt(btw);
     $('breakdownTotal').textContent=fmt(total);
 
-    // Grote teller in het overzicht: bij toegevoegde ontwerpen toont die het
-    // TOTAAL aantal posters en zijn de +/- knoppen uit (aantallen worden dan per
-    // ontwerp in de lijst geregeld). Bij een normale enkele bestelling werkt de
-    // teller zoals altijd (bewerkt state.qty).
-    const heeftLijst = ontwerpen.length > 0;
+    // Huidig-aantal-blok (onder de editor) tonen zodra er een bestand in de
+    // editor staat. Dit is de teller voor het ontwerp waar de klant nu mee bezig is.
+    const huidigBlok = $('huidigAantalBlok');
+    if (huidigBlok) huidigBlok.classList.toggle('visible', !!state.file);
+    const huidigInput = $('huidigAantalInput');
+    if (huidigInput && document.activeElement !== huidigInput) huidigInput.value = state.qty;
+
+    // Aantal ontwerpen "in het spel" = lijst + (huidig editor-ontwerp als er een bestand is).
+    const aantalOntwerpen = ontwerpen.length + (state.file ? 1 : 0);
+
+    // Grote teller in het overzicht: zodra er méér dan één ontwerp is, wordt die
+    // een read-only TOTAAL-weergave (aantallen regel je dan per ontwerp — in de
+    // editor-teller en in de lijst). Bij precies één ontwerp werkt de grote teller
+    // zoals vanouds (bewerkt state.qty rechtstreeks).
+    const multiModus = aantalOntwerpen > 1;
     const qtyInputEl = $('qtyInput');
     const qtyRow = qtyInputEl ? qtyInputEl.closest('.qty-row') : null;
     if (qtyInputEl) {
-      if (heeftLijst) {
+      if (multiModus) {
         qtyInputEl.value = totaal;
         qtyInputEl.readOnly = true;
         if (qtyRow) qtyRow.querySelectorAll('.qty-btn').forEach(b => { b.disabled = true; b.style.opacity = '0.4'; b.style.cursor = 'not-allowed'; });
