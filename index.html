@@ -2852,6 +2852,26 @@
       // de bestaande backend-verwerking (die verwacht één bestand op topniveau).
       const eerste = ontwerpenPayload[0];
 
+      // Payload-veiligheid: alle base64 gaat samen in één function-body (~6 MB
+      // Netlify-limiet). Bij veel/grote ontwerpen kan het totaal daar overheen.
+      // Schat de totale base64-grootte; is die te groot, stuur de bestanden dan
+      // NIET mee (order gaat door) en laat de klant alles via WeTransfer sturen.
+      const PAYLOAD_LIMIET_BYTES = 4.5 * 1024 * 1024; // veilige marge onder ~6 MB
+      let totaleBase64 = 0;
+      ontwerpenPayload.forEach(o => {
+        if (o.bestand_data)        totaleBase64 += o.bestand_data.length;
+        if (o.bestand_data_achter) totaleBase64 += o.bestand_data_achter.length;
+      });
+      if (totaleBase64 > PAYLOAD_LIMIET_BYTES) {
+        // Bestanden weglaten uit de payload; markeren als "te groot" zodat de
+        // successcherm-melding en de backend de WeTransfer-instructie tonen.
+        ontwerpenPayload.forEach(o => {
+          o.bestand_data = null; o.bestand_data_achter = null; o.bestand_te_groot = true;
+        });
+        eerste.bestand_data = null; eerste.bestand_data_achter = null;
+        ietsTeGroot = true;
+      }
+
       // Samenvattende bestelling. `aantal` = totaal; prijs_per_stuk = die van het
       // eerste ontwerp (voor de oude offerteregel-fallback). De echte per-ontwerp
       // prijzen staan in ontwerpen[].

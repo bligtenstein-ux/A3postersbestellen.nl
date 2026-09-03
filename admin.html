@@ -480,14 +480,16 @@ function renderOrders() {
         <div style="font-size:10px;color:var(--muted)">${o.klant?.email || ''}</div>
         ${o.klant?.bedrijf ? `<div style="font-size:10px;color:var(--muted)">${o.klant.bedrijf}</div>` : ''}
       </td>
-      <td>${o.bestelling?.aantal || '—'} st.${o.bestelling?.drukzijde === 'dubbel' ? '<br><span class="badge badge-yellow" style="margin-top:2px">2-zijdig</span>' : ''}</td>
+      <td>${o.bestelling?.aantal || '—'} st.${o.bestelling?.drukzijde === 'dubbel' ? '<br><span class="badge badge-yellow" style="margin-top:2px">2-zijdig</span>' : ''}${Array.isArray(o.ontwerpen) && o.ontwerpen.length > 1 ? `<br><span class="badge badge-green" style="margin-top:2px">${o.ontwerpen.length} ontwerpen</span>` : ''}</td>
       <td class="mono">€ ${totaal.toFixed(2).replace('.',',')}</td>
-      <td>${o.bestand_naam
-        ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();downloadBestand('${o.ordernummer}','${o.bestand_naam}')">⬇ ${o.bestand_naam.substring(0,20)}${o.bestand_naam.length>20?'…':''}</button>`
-        : '<span style="color:var(--muted);font-size:11px">Geen bestand</span>'}
-        ${o.bestand_naam_achter
-        ? `<button class="btn btn-ghost btn-sm" style="margin-top:3px" onclick="event.stopPropagation();downloadBestand('${o.ordernummer}','${o.bestand_naam_achter}','achter')">⬇ Achterzijde</button>`
-        : ''}</td>
+      <td>${Array.isArray(o.ontwerpen) && o.ontwerpen.length > 1
+        ? `<span style="font-size:11px;color:var(--muted)">${o.ontwerpen.length} bestanden<br>→ open details</span>`
+        : (o.bestand_naam
+          ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();downloadBestand('${o.ordernummer}','${o.bestand_naam}')">⬇ ${o.bestand_naam.substring(0,20)}${o.bestand_naam.length>20?'…':''}</button>`
+          : '<span style="color:var(--muted);font-size:11px">Geen bestand</span>')
+        + (o.bestand_naam_achter && !(Array.isArray(o.ontwerpen) && o.ontwerpen.length > 1)
+          ? `<button class="btn btn-ghost btn-sm" style="margin-top:3px" onclick="event.stopPropagation();downloadBestand('${o.ordernummer}','${o.bestand_naam_achter}','achter')">⬇ Achterzijde</button>`
+          : '')}</td>
       <td>${o.gripp_offerte_id
         ? `<span class="badge badge-green">✓ #${o.gripp_offerte_id}</span>`
         : `<button class="btn btn-sm btn-green" onclick="event.stopPropagation();stuurNaarGripp('${o.ordernummer}')">→ Gripp</button>`}</td>
@@ -512,9 +514,22 @@ function renderOrders() {
           </div>
           <div>
             <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Bestelling</div>
-            <div>${o.bestelling?.aantal} × A3 poster — ${o.bestelling?.drukzijde === 'dubbel' ? 'dubbelzijdig' : 'enkelzijdig'}</div>
-            <div>€ ${(o.bestelling?.prijs_per_stuk||0).toFixed(2).replace('.',',')} per stuk</div>
-            <div>Verzending: ${o.bestelling?.verzendmethode || '—'}</div>
+            ${Array.isArray(o.ontwerpen) && o.ontwerpen.length > 1 ? `
+              <div style="font-weight:600;margin-bottom:4px">${o.bestelling?.aantal} posters — ${o.ontwerpen.length} ontwerpen</div>
+              ${o.ontwerpen.map((ont, i) => `
+                <div style="padding:4px 0;border-top:1px solid var(--line)">
+                  <div>Ontwerp ${i+1}: ${ont.aantal} × ${ont.drukzijde === 'dubbel' ? 'dubbelzijdig' : 'enkelzijdig'} — € ${(Number(ont.prijs_per_stuk)||0).toFixed(2).replace('.',',')} p/st</div>
+                  <div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap">
+                    ${ont.bestandsnaam ? `<button class="btn btn-ghost btn-sm" onclick="downloadBestand('${o.ordernummer}','${(ont.bestandsnaam||'').replace(/'/g,'')}','voor',${i})">⬇ ${(ont.bestandsnaam||'').substring(0,18)}</button>` : '<span style="color:var(--muted);font-size:11px">geen bestand</span>'}
+                    ${ont.bestandsnaam_achter ? `<button class="btn btn-ghost btn-sm" onclick="downloadBestand('${o.ordernummer}','${(ont.bestandsnaam_achter||'').replace(/'/g,'')}','achter',${i})">⬇ achterzijde</button>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            ` : `
+              <div>${o.bestelling?.aantal} × A3 poster — ${o.bestelling?.drukzijde === 'dubbel' ? 'dubbelzijdig' : 'enkelzijdig'}</div>
+              <div>€ ${(o.bestelling?.prijs_per_stuk||0).toFixed(2).replace('.',',')} per stuk</div>
+            `}
+            <div style="margin-top:4px">Verzending: ${o.bestelling?.verzendmethode || '—'}</div>
             ${o.bestelling?.opmerkingen ? `<div style="margin-top:4px;color:var(--muted)">Opmerking: ${o.bestelling.opmerkingen}</div>` : ''}
           </div>
           <div>
@@ -545,10 +560,20 @@ function setTab(tab, el) {
 function renderBestanden() {
   const rijen = [];
   alleOrders.forEach(o => {
-    if (o.bestand_naam) rijen.push({ o, naam: o.bestand_naam, zijde: 'voor',   label: '' });
-    if (o.bestand_naam_achter) rijen.push({ o, naam: o.bestand_naam_achter, zijde: 'achter', label: ' <span class="badge badge-yellow">achterzijde</span>' });
+    if (Array.isArray(o.ontwerpen) && o.ontwerpen.length > 1) {
+      // Multi-ontwerp order: een rij per bestand, met ontwerp-index voor download.
+      o.ontwerpen.forEach((ont, i) => {
+        if (ont.bestandsnaam) rijen.push({ o, naam: ont.bestandsnaam, zijde: 'voor', idx: i,
+          label: ` <span class="badge badge-green">ontwerp ${i+1}</span>` });
+        if (ont.bestandsnaam_achter) rijen.push({ o, naam: ont.bestandsnaam_achter, zijde: 'achter', idx: i,
+          label: ` <span class="badge badge-green">ontwerp ${i+1}</span> <span class="badge badge-yellow">achterzijde</span>` });
+      });
+    } else {
+      if (o.bestand_naam) rijen.push({ o, naam: o.bestand_naam, zijde: 'voor', idx: null, label: '' });
+      if (o.bestand_naam_achter) rijen.push({ o, naam: o.bestand_naam_achter, zijde: 'achter', idx: null, label: ' <span class="badge badge-yellow">achterzijde</span>' });
+    }
   });
-  $('bestandenLijst').innerHTML = rijen.map(({ o, naam, zijde, label }) => `
+  $('bestandenLijst').innerHTML = rijen.map(({ o, naam, zijde, idx, label }) => `
     <tr>
       <td>
         <div style="font-weight:600;font-family:'JetBrains Mono',monospace;font-size:11px">${naam}${label}</div>
@@ -559,17 +584,17 @@ function renderBestanden() {
         <div style="font-size:10px;color:var(--muted)">${o.klant?.email || ''}</div>
       </td>
       <td style="font-size:11px">${datumFmt(o.aangemaakt)}</td>
-      <td><button class="btn btn-green btn-sm" onclick="downloadBestand('${o.ordernummer}','${naam}','${zijde}')">⬇ Download</button></td>
+      <td><button class="btn btn-green btn-sm" onclick="downloadBestand('${o.ordernummer}','${naam.replace(/'/g,'')}','${zijde}'${idx!=null?','+idx:''})">⬇ Download</button></td>
     </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Nog geen bestanden opgeslagen</td></tr>';
 }
 
 // ── DOWNLOAD BESTAND ──────────────────────────────────────────
-async function downloadBestand(key, naam, zijde = 'voor') {
+async function downloadBestand(key, naam, zijde = 'voor', ontwerpIdx = null) {
   showToast('Bestand downloaden…');
   try {
-    const resp = await fetch(`/.netlify/functions/get-bestand?ordernummer=${encodeURIComponent(key)}&zijde=${encodeURIComponent(zijde)}`, {
-      headers: authHeaders()
-    });
+    let url = `/.netlify/functions/get-bestand?ordernummer=${encodeURIComponent(key)}&zijde=${encodeURIComponent(zijde)}`;
+    if (ontwerpIdx != null) url += `&ontwerp=${encodeURIComponent(ontwerpIdx)}`;
+    const resp = await fetch(url, { headers: authHeaders() });
     if (!resp.ok) throw new Error('Download mislukt');
     const blob = await resp.blob();
     const a = document.createElement('a');
