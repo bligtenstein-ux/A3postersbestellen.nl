@@ -840,6 +840,16 @@
   }
   .huidig-aantal-blok.visible { display: flex; }
   .huidig-aantal-label { font-size: 13px; font-weight: 600; color: var(--green-dark); }
+  .achter-preview { display: none; margin-top: 12px; }
+  .achter-preview.visible { display: block; }
+  .ontwerp-thumbs { display: flex; gap: 3px; flex: 0 0 auto; }
+  .ontwerp-thumb-achter { opacity: 0.92; border-style: dashed; }
+  .ontwerp-badge-dubbel {
+    display: inline-block;
+    background: var(--green-light); color: var(--green-dark);
+    font-size: 11px; font-weight: 700;
+    padding: 1px 7px; border-radius: 999px;
+  }
   .ontwerpen-hint { font-size: 12px; color: var(--ink-mid); margin-top: 8px; }
 
 
@@ -1480,6 +1490,7 @@
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -1821,6 +1832,33 @@
           <span class="achter-filename" id="achterFilename">bestand.pdf</span>
           <button class="preview-remove" onclick="removeFileAchter()" title="Verwijder achterzijde">&times;</button>
         </div>
+
+        <!-- Achterzijde preview (canvas op A3 + DPI-meter, zonder bewerk-knoppen) -->
+        <div class="achter-preview" id="achterPreview">
+          <div class="canvas-container" id="achterCanvasContainer">
+            <canvas id="achterCanvas"></canvas>
+            <div class="canvas-placeholder" id="achterCanvasPlaceholder">Achterzijde laden...</div>
+            <div class="pdf-loading" id="achterPdfLoading" style="display:none">
+              <div class="pdf-spinner"></div>
+              <span>PDF wordt geladen...</span>
+            </div>
+          </div>
+          <div class="dpi-panel">
+            <div class="dpi-header">
+              <div class="dpi-label">Afdrukkwaliteit achterzijde</div>
+              <div class="dpi-value" id="achterDpiValue">— dpi</div>
+            </div>
+            <div class="dpi-dots" id="achterDpiDots">
+              <div class="dpi-dot" id="achterDot1"></div>
+              <div class="dpi-dot" id="achterDot2"></div>
+              <div class="dpi-dot" id="achterDot3"></div>
+              <div class="dpi-dot" id="achterDot4"></div>
+              <div class="dpi-dot" id="achterDot5"></div>
+            </div>
+            <div class="dpi-text" id="achterDpiText">Bestand wordt geanalyseerd...</div>
+            <div class="dpi-sub" id="achterDpiSub"></div>
+          </div>
+        </div>
       </div>
 
       <!-- Meerdere ontwerpen: toevoegknop + lijst van toegevoegde ontwerpen -->
@@ -2143,14 +2181,99 @@
     if (fn) fn.textContent = file.name + ' — ' + (file.size/1024/1024).toFixed(1) + ' MB';
     const strip = $('achterFileStrip');
     if (strip) strip.classList.add('visible');
+    renderAchterPreview(file);
     updateButton();
     updatePrice();
+  }
+
+  // ── Achterzijde-preview (los van de voorzijde-editor; geen bewerk-knoppen) ──
+  // Tekent de geüploade achterzijde op een eigen A3-canvas en vult een eigen
+  // DPI-meter. Gebruikt dezelfde reken-helper (calcDpi) als de voorzijde, maar
+  // raakt de globale voorzijde-state (imgEl/pdfDoc/rotation) NIET aan.
+  function updateAchterDpiMeter(dpi) {
+    const level = DPI_LEVELS.find(l => dpi >= l.min && dpi < l.max) || DPI_LEVELS[DPI_LEVELS.length-1];
+    const v = $('achterDpiValue'); if (v) v.textContent = dpi + ' dpi';
+    for (let i=1;i<=5;i++){
+      const dot = $('achterDot'+i); if(!dot) continue;
+      dot.className = 'dpi-dot';
+      if (i <= level.dots) dot.classList.add('filled', level.cls);
+    }
+    const txt = $('achterDpiText');
+    if (txt) { txt.className = 'dpi-text ' + level.cls; txt.textContent = level.label; }
+    const sub = $('achterDpiSub'); if (sub) sub.textContent = level.sub;
+  }
+
+  function drawAchterCanvas(img) {
+    const canvas = $('achterCanvas');
+    const container = $('achterCanvasContainer');
+    if (!canvas || !container) return;
+    const cw = container.clientWidth || 600;
+    const ch = container.clientHeight || 848;
+    canvas.width = cw; canvas.height = ch;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, cw, ch);
+    const scale = Math.min(cw/img.naturalWidth, ch/img.naturalHeight);
+    const dw = img.naturalWidth*scale, dh = img.naturalHeight*scale;
+    ctx.drawImage(img, (cw-dw)/2, (ch-dh)/2, dw, dh);
+    const ph = $('achterCanvasPlaceholder'); if (ph) ph.style.display = 'none';
+  }
+
+  async function renderAchterPreview(file) {
+    const preview = $('achterPreview');
+    if (preview) preview.classList.add('visible');
+    const ph = $('achterCanvasPlaceholder');
+    if (ph) { ph.style.display = 'flex'; ph.textContent = 'Achterzijde laden...'; }
+    const av = $('achterDpiValue'); if (av) av.textContent = '— dpi';
+    for (let i=1;i<=5;i++){ const d=$('achterDot'+i); if(d) d.className='dpi-dot'; }
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (isPdf) {
+      const loading = $('achterPdfLoading'); if (loading) loading.style.display = 'flex';
+      try {
+        if (typeof pdfjsLib !== 'undefined') {
+          pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+        const arrayBuffer = await file.arrayBuffer();
+        const doc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+        const page = await doc.getPage(1);
+        const scale = 3.0; // hoge resolutie voor DPI-check
+        const viewport = page.getViewport({scale});
+        const off = document.createElement('canvas');
+        off.width = viewport.width; off.height = viewport.height;
+        await page.render({canvasContext: off.getContext('2d'), viewport}).promise;
+        const img = new Image();
+        img.onload = () => {
+          drawAchterCanvas(img);
+          updateAchterDpiMeter(calcDpi(img.naturalWidth, img.naturalHeight));
+        };
+        img.src = off.toDataURL('image/png');
+      } catch (e) {
+        if (ph) { ph.style.display = 'flex'; ph.textContent = 'Kon PDF niet weergeven'; }
+      } finally {
+        if (loading) loading.style.display = 'none';
+      }
+    } else {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          drawAchterCanvas(img);
+          updateAchterDpiMeter(calcDpi(img.naturalWidth, img.naturalHeight));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
   function removeFileAchter() {
     state.fileAchter = null;
     const strip = $('achterFileStrip');
     if (strip) strip.classList.remove('visible');
+    const preview = $('achterPreview');
+    if (preview) preview.classList.remove('visible');
     const zone = $('achterUploadZone');
     if (zone) zone.style.display = '';
     const inp = $('fileInputAchter');
@@ -2376,10 +2499,15 @@
     resetFitState();
 
     if(pdfDoc) {
-      // PDF-preview updaten met nieuwe rotatie. Het originele PDF-bestand
-      // blijft ongewijzigd — de rotatie-instructie gaat als metadata mee
-      // naar de drukker.
+      // PDF-preview updaten met nieuwe rotatie...
       renderPdfPage(pdfPage);
+      // ...én het uitvoerbestand daadwerkelijk roteren (vectorgetrouw via pdf-lib),
+      // zodat de gedraaide stand ook echt in de bestelde PDF zit. Faalt pdf-lib,
+      // dan blijft het origineel staan (beter dan een corrupt bestand).
+      verwerkPdf('rotate', rotation).then(ok => {
+        if (!ok) console.warn('[pdf] rotatie niet in bestand toegepast — origineel behouden');
+        updateButton();
+      });
       return;
     }
 
@@ -2434,7 +2562,101 @@
     });
   }
 
+  // ── PDF-verwerking met pdf-lib (behoudt vectorkwaliteit) ────────────────────
+  // Voor PDF's doen we rotatie en "Passend/Vullend op A3" NIET via een raster-
+  // canvas (dat zou de PDF naar JPG verlagen), maar door de originele PDF-pagina
+  // vectorgetrouw op een nieuwe A3-pagina (met 3mm afloop) te embedden.
+  // origPdfBytes bewaart de ONGEWIJZIGDE bytes van de geüploade PDF, zodat elke
+  // bewerking van het origineel uitgaat (geen dubbele afloop of kwaliteitsverlies).
+  let origPdfBytes = null;
+
+  // Genereert een A3-PDF (mode: 'contain' | 'cover' | 'rotate') uit de originele
+  // PDF-pagina, met de opgegeven rotatie. Zet het resultaat als state.file.
+  async function verwerkPdf(mode, rotatieGraden) {
+    if (!origPdfBytes || typeof PDFLib === 'undefined') return false;
+    try {
+      const { PDFDocument, degrees } = PDFLib;
+
+      // A3 met 3mm afloop = 303 x 426 mm. PDF-punten: 1 mm = 2.83465 pt.
+      const MM = 2.83465;
+      const A3W = 303 * MM;   // 858.9 pt
+      const A3H = 426 * MM;   // 1207.6 pt
+      const MARGE = 3 * MM;   // 3mm binnenmarge voor "passend"
+
+      const src = await PDFDocument.load(origPdfBytes);
+      const out = await PDFDocument.create();
+      const [embedded] = await out.embedPdf(src, [0]);
+
+      // Afmetingen van de bronpagina, rekening houdend met rotatie.
+      const rot = ((rotatieGraden % 360) + 360) % 360;
+      const draai = rot === 90 || rot === 270;
+      const ew = embedded.width, eh = embedded.height;
+      const effW = draai ? eh : ew;   // effectieve breedte na rotatie
+      const effH = draai ? ew : eh;
+
+      // Schaal bepalen.
+      let doelW, doelH;
+      if (mode === 'cover') {
+        doelW = A3W; doelH = A3H; // vullend: heel afloopvlak
+      } else {
+        doelW = A3W - 2 * MARGE; doelH = A3H - 2 * MARGE; // passend: binnen marge
+      }
+      const schaal = mode === 'cover'
+        ? Math.max(doelW / effW, doelH / effH)
+        : Math.min(doelW / effW, doelH / effH);
+
+      const page = out.addPage([A3W, A3H]);
+
+      // Positionering: we plaatsen het (mogelijk geroteerde) embed gecentreerd.
+      // pdf-lib roteert om de linkeronderhoek, dus we corrigeren de offset per hoek.
+      const sw = ew * schaal, sh = eh * schaal; // geschaalde ONGEROTEERDE maten
+      const cx = A3W / 2, cy = A3H / 2;
+      let x, y;
+      if (rot === 0)        { x = cx - sw/2;  y = cy - sh/2; }
+      else if (rot === 90)  { x = cx + sh/2;  y = cy - sw/2; }
+      else if (rot === 180) { x = cx + sw/2;  y = cy + sh/2; }
+      else                  { x = cx - sh/2;  y = cy + sw/2; } // 270
+
+      page.drawPage(embedded, { x, y, xScale: schaal, yScale: schaal, rotate: degrees(rot) });
+
+      const bytes = await out.save();
+      const naam = (state.file ? state.file.name.replace(/\.[^.]+$/, '') : 'ontwerp')
+        + (mode === 'cover' ? '_a3vullend' : mode === 'contain' ? '_a3passend' : '_gedraaid') + '.pdf';
+      state.file = new File([bytes], naam, { type: 'application/pdf' });
+      setFilenameLabel(state.file);
+      return true;
+    } catch (e) {
+      console.error('[pdf] verwerking mislukt:', e);
+      return false;
+    }
+  }
+
   function maakPassend(mode = 'contain') {
+    // PDF's: vectorgetrouw op A3 plaatsen via pdf-lib (blijft een PDF, geen JPG).
+    if (pdfDoc && origPdfBytes) {
+      verwerkPdf(mode, rotation).then(ok => {
+        if (!ok) {
+          alert('Kon de PDF niet op A3 plaatsen. Probeer het opnieuw of upload een afbeelding.');
+          return;
+        }
+        // Preview verversen: toon de zojuist gemaakte A3-PDF opnieuw.
+        origPdfBytes && renderPdfPage(1); // preview blijft de originele weergave; het bestand is nu A3
+        updateDpiMeter(calcDpi(2386, 3354)); // A3 bij 200 dpi als referentie
+        $('dpiSub').textContent = (mode === 'cover'
+          ? 'Vullend op A3 geplaatst (vector-PDF behouden). Inclusief 3mm afloop.'
+          : 'Passend op A3 geplaatst (vector-PDF behouden). Inclusief 3mm afloop.');
+        resetFitState();
+        fitApplied = mode;
+        const btn = mode === 'cover' ? $('btnFitCover') : $('btnFitContain');
+        if (btn) {
+          btn.classList.add('applied');
+          btn.textContent = mode === 'cover' ? 'Vullend op A3 ✓' : 'Passend op A3 ✓';
+        }
+        updateButton();
+      });
+      return;
+    }
+
     if(!imgEl) return;
 
     // A3 met 3mm afloop aan alle kanten = 303 x 426mm
@@ -2623,6 +2845,7 @@
     state.file = file;
     origFile = file;
     pdfDoc = null; pdfPage = 1; rotation = 0;
+    origPdfBytes = null;
     resetFitState();
 
     $('uploadZone').style.display = 'none';
@@ -2640,6 +2863,8 @@
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 
     if(isPdf) {
+      // Bewaar de originele PDF-bytes voor vectorgetrouwe bewerking (pdf-lib).
+      file.arrayBuffer().then(buf => { origPdfBytes = buf; }).catch(()=>{});
       loadPdf(file);
     } else {
       const reader = new FileReader();
@@ -2659,7 +2884,7 @@
   }
 
   function resetEditor() {
-    state.file = null; imgEl = null; origFile = null; rotation = 0; pdfDoc = null;
+    state.file = null; imgEl = null; origFile = null; rotation = 0; pdfDoc = null; origPdfBytes = null;
     resetFitState();
     $('uploadZone').style.display = '';
     $('editorPanel').classList.remove('visible');
@@ -2689,6 +2914,25 @@
     return null;
   }
 
+  // Thumbnail van de achterzijde uit het achter-preview-canvas (indien gevuld).
+  function maakThumbnailAchter() {
+    try {
+      const src = $('achterCanvas');
+      if (src && src.width) {
+        const c = document.createElement('canvas');
+        const maxT = 88;
+        const ratio = src.width / src.height;
+        c.width  = ratio >= 1 ? maxT : Math.round(maxT * ratio);
+        c.height = ratio >= 1 ? Math.round(maxT / ratio) : maxT;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(src, 0, 0, c.width, c.height);
+        return c.toDataURL('image/jpeg', 0.7);
+      }
+    } catch (e) { /* stille fallback */ }
+    return null;
+  }
+
   // Verplaatst het huidige ontwerp (editor) naar de ontwerpenlijst en reset de
   // editor zodat de klant een volgend ontwerp kan toevoegen. Drukzijde en aantal
   // worden per ontwerp vastgelegd.
@@ -2708,6 +2952,7 @@
       drukzijde:  state.drukzijde,
       naam:       state.file.name,
       thumbnail:  maakThumbnail(),
+      thumbnailAchter: state.drukzijde === 'dubbel' ? maakThumbnailAchter() : null,
     });
     // Editor + achterzijde resetten voor het volgende ontwerp; aantal terug naar 1.
     resetEditor();
@@ -2753,12 +2998,21 @@
 
     lijst.innerHTML = ontwerpen.map((o, i) => {
       const thumb = o.thumbnail
-        ? `<img class="ontwerp-thumb" src="${o.thumbnail}" alt="">`
+        ? `<img class="ontwerp-thumb" src="${o.thumbnail}" alt="voorzijde">`
         : `<div class="ontwerp-thumb"></div>`;
-      const zijde = o.drukzijde === 'dubbel' ? 'dubbelzijdig' : 'enkelzijdig';
+      const dubbel = o.drukzijde === 'dubbel';
+      // Bij dubbelzijdig: toon ook de achterzijde-thumbnail met een klein label.
+      const thumbAchter = dubbel
+        ? (o.thumbnailAchter
+            ? `<img class="ontwerp-thumb ontwerp-thumb-achter" src="${o.thumbnailAchter}" alt="achterzijde" title="Achterzijde">`
+            : `<div class="ontwerp-thumb ontwerp-thumb-achter" title="Achterzijde"></div>`)
+        : '';
+      const zijde = dubbel
+        ? '<span class="ontwerp-badge-dubbel">dubbelzijdig</span>'
+        : 'enkelzijdig';
       const naamEsc = (o.naam || 'ontwerp').replace(/</g, '&lt;');
       return `<div class="ontwerp-item">
-        ${thumb}
+        <div class="ontwerp-thumbs">${thumb}${thumbAchter}</div>
         <div class="ontwerp-info">
           <div class="ontwerp-naam">${naamEsc}</div>
           <div class="ontwerp-meta">${zijde}</div>
