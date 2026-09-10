@@ -2467,7 +2467,7 @@
     $('dpiSub').textContent = level.sub;
   }
 
-  function drawCanvas() {
+  function drawCanvas(alGeroteerd = false) {
     if(!imgEl) return;
     const canvas = $('previewCanvas');
     const container = $('canvasContainer');
@@ -2478,7 +2478,10 @@
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, cw, ch);
 
-    const rotated = rotation === 90 || rotation === 270;
+    // Bij een PDF-preview is de rotatie al in imgEl gebakken (via getViewport),
+    // dus dan NIET nog eens roteren — anders wordt de rotatie dubbel toegepast.
+    const effRot = alGeroteerd ? 0 : rotation;
+    const rotated = effRot === 90 || effRot === 270;
     const srcW = rotated ? imgEl.naturalHeight : imgEl.naturalWidth;
     const srcH = rotated ? imgEl.naturalWidth  : imgEl.naturalHeight;
     const scale = Math.min(cw/srcW, ch/srcH);
@@ -2487,7 +2490,7 @@
 
     ctx.save();
     ctx.translate(dx+dw/2, dy+dh/2);
-    ctx.rotate(rotation*Math.PI/180);
+    ctx.rotate(effRot*Math.PI/180);
     ctx.drawImage(imgEl, -imgEl.naturalWidth/2*scale, -imgEl.naturalHeight/2*scale,
                   imgEl.naturalWidth*scale, imgEl.naturalHeight*scale);
     ctx.restore();
@@ -2815,7 +2818,7 @@
     imgEl = new Image();
     imgEl.onload = () => {
       $('pdfLoading').style.display = 'none';
-      drawCanvas();
+      drawCanvas(true); // rotatie zit al in imgEl via getViewport — niet nog eens roteren
       // DPI: PDF native 72dpi, maar we schatten op basis van pagina-afmetingen
       // viewport bij scale=1 geeft puntgrootte, 1pt = 1/72 inch
       const nativeVP = page.getViewport({scale:1});
