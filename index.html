@@ -2263,6 +2263,7 @@
   // ── EDITOR STATE ──
   let imgEl = null;        // huidige weergave-afbeelding
   let origFile = null;     // origineel geüpload bestand (basis voor rotatie)
+  let origImgEl = null;    // origineel bronbeeld — fit wordt HIERop toegepast, nooit op het resultaat (voorkomt krimpen bij herhaald klikken)
   let origUploadNaam = ''; // originele bestandsnaam zonder extensie — basis voor fit-suffix, verandert nooit na upload
   let rotation = 0;
   let fitApplied = null;   // null | 'contain' | 'cover'
@@ -2421,10 +2422,16 @@
     const canvW = Math.round(A3_W_MM * MM_TO_PX);
     const canvH = Math.round(A3_H_MM * MM_TO_PX);
 
+    // Fit ALTIJD op het originele bronbeeld toepassen — nooit op een al
+    // ingepast resultaat, anders stapelt de binnenmarge op en krimpt het beeld
+    // bij elke klik. Eerste keer: leg het huidige beeld vast als origineel.
+    if (!origImgEl) origImgEl = imgEl;
+    const bron = origImgEl;
+
     // Bepaal bronafmetingen (rekening houdend met rotatie)
     const rotated = rotation === 90 || rotation === 270;
-    const srcW = rotated ? imgEl.naturalHeight : imgEl.naturalWidth;
-    const srcH = rotated ? imgEl.naturalWidth  : imgEl.naturalHeight;
+    const srcW = rotated ? bron.naturalHeight : bron.naturalWidth;
+    const srcH = rotated ? bron.naturalWidth  : bron.naturalHeight;
 
     let scale;
     if(mode === 'cover') {
@@ -2457,7 +2464,7 @@
     ctx.rotate(rotation * Math.PI / 180);
     const drawW = rotated ? dh : dw;
     const drawH = rotated ? dw : dh;
-    ctx.drawImage(imgEl, -drawW/2, -drawH/2, drawW, drawH);
+    ctx.drawImage(bron, -drawW/2, -drawH/2, drawW, drawH);
     ctx.restore();
 
     // Maak nieuw Image-element van het resultaat
@@ -2572,6 +2579,7 @@
     imgEl = new Image();
     imgEl.onload = () => {
       $('pdfLoading').style.display = 'none';
+      origImgEl = imgEl;   // gerenderde PDF-pagina als origineel bronbeeld voor fit
       // Fit-knoppen weer vrijgeven — de PDF-pagina is nu gerenderd en klaar
       const bc2=$('btnFitContain'), bv2=$('btnFitCover');
       if(bc2){ bc2.disabled=false; bc2.style.opacity=''; bc2.style.cursor=''; }
@@ -2605,6 +2613,7 @@
     }
     state.file = file;
     origFile = file;
+    origImgEl = null;  // nieuw bestand — oude bron wissen, wordt bij load opnieuw gezet
     origUploadNaam = file.name.replace(/\.[^.]+$/, ''); // basis voor fit-suffix, blijft ongewijzigd
     pdfDoc = null; pdfPage = 1; rotation = 0;
     resetFitState();
@@ -2631,6 +2640,7 @@
         const img = new Image();
         img.onload = () => {
           imgEl = img;
+          origImgEl = img;   // origineel bronbeeld voor fit
           drawCanvas();
           updateDpiMeter(calcDpi(img.naturalWidth, img.naturalHeight));
         };
@@ -2642,7 +2652,7 @@
   }
 
   function resetEditor() {
-    state.file = null; imgEl = null; origFile = null; rotation = 0; pdfDoc = null;
+    state.file = null; imgEl = null; origImgEl = null; origFile = null; rotation = 0; pdfDoc = null;
     resetFitState();
     $('uploadZone').style.display = '';
     $('editorPanel').classList.remove('visible');
