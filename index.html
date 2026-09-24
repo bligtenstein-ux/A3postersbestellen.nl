@@ -584,7 +584,7 @@
 
   /* canvas editor — zichtbaar na upload */
   .editor-panel {
-    display: none;
+    display: flex;
     flex-direction: column;
     gap: 12px;
   }
@@ -832,6 +832,70 @@
   }
   .ontwerp-remove:hover { background: #fee2e2; color: #dc2626; }
   .ontwerpen-hint { font-size: 12px; color: var(--ink-mid); margin-top: 8px; }
+
+  /* ── GALERIJ ALS HOOFDWEERGAVE + EDITOR-MODAL ── */
+  .ontwerp-card {
+    display: flex; align-items: center; gap: 14px;
+    background: #fff; border: 1px solid var(--line);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+    transition: border-color .12s, box-shadow .12s;
+  }
+  .ontwerp-card:hover { border-color: var(--green-mid); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .ontwerp-card.incompleet { border-color: #f0b429; background: #fffaf0; }
+  .ontwerp-card-thumb {
+    width: 60px; height: 60px; flex: 0 0 60px;
+    border-radius: 8px; object-fit: cover;
+    background: #f3f4f6; border: 1px solid var(--line); cursor: pointer;
+  }
+  .ontwerp-card-body { flex: 1 1 auto; min-width: 0; cursor: pointer; }
+  .ontwerp-card-naam { font-size: 14px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ontwerp-card-meta { font-size: 12px; color: var(--ink-mid); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .ontwerp-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--green-light); color: var(--green-dark); }
+  .ontwerp-badge.warn { background: #fef3c7; color: #b45309; }
+  .ontwerp-card-edit {
+    flex: 0 0 auto; background: #fff; border: 1.5px solid var(--green);
+    color: var(--green-dark); border-radius: 8px; padding: 8px 14px;
+    font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .ontwerp-card-edit:hover { background: var(--green-light); }
+  .ontwerp-card-qty { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+  .ontwerp-card-qty button { width: 28px; height: 28px; border: 1px solid var(--line); background: #fff; border-radius: 6px; font-size: 16px; line-height: 1; cursor: pointer; color: var(--ink); }
+  .ontwerp-card-qty button:hover { border-color: var(--green); color: var(--green-dark); }
+  .ontwerp-card-qty input { width: 50px; text-align: center; border: 1px solid var(--line); border-radius: 6px; padding: 5px 2px; font-family: var(--font); font-size: 13px; }
+  .ontwerp-card-remove { flex: 0 0 auto; background: none; border: none; cursor: pointer; font-size: 22px; line-height: 1; color: var(--ink-mid); padding: 4px 8px; border-radius: 6px; }
+  .ontwerp-card-remove:hover { background: #fee2e2; color: #dc2626; }
+
+  /* Editor als modal overlay */
+  .editor-modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: rgba(17,24,39,0.55); backdrop-filter: blur(2px);
+    align-items: flex-start; justify-content: center;
+    padding: 24px 16px; overflow-y: auto;
+  }
+  .editor-modal-overlay.visible { display: flex; }
+  .editor-modal {
+    background: #fff; border-radius: 16px; width: 100%; max-width: 640px;
+    margin: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    max-height: calc(100vh - 48px); display: flex; flex-direction: column;
+  }
+  .editor-modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--line); flex: 0 0 auto;
+  }
+  .editor-modal-title { font-size: 16px; font-weight: 700; color: var(--ink); }
+  .editor-modal-close { background: none; border: none; font-size: 26px; line-height: 1; color: var(--ink-mid); cursor: pointer; padding: 2px 8px; border-radius: 8px; }
+  .editor-modal-close:hover { background: #f3f4f6; color: var(--ink); }
+  .editor-modal-body { padding: 20px; overflow-y: auto; flex: 1 1 auto; }
+  .editor-modal-foot {
+    padding: 14px 20px; border-top: 1px solid var(--line); flex: 0 0 auto;
+    display: flex; justify-content: flex-end; gap: 10px;
+  }
+  .btn-modal-klaar {
+    background: var(--green); color: #fff; border: none; border-radius: 10px;
+    padding: 12px 28px; font-family: var(--font); font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  .btn-modal-klaar:hover { background: var(--green-dark); }
+  .btn-modal-klaar:disabled { opacity: 0.5; cursor: not-allowed; }
 
 
 
@@ -1716,7 +1780,7 @@
         </div>
       </div>
 
-      <!-- Drop zone (verborgen na upload) -->
+      <!-- Drop zone (verborgen zodra er ontwerpen zijn) -->
       <div class="editor-drop-zone" id="uploadZone">
         <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp" onchange="handleFile(this.files[0])">
         <div class="editor-drop-title">Sleep je bestand hierheen of klik om te uploaden</div>
@@ -1728,7 +1792,16 @@
         </div>
       </div>
 
-      <!-- Editor panel (zichtbaar na upload) -->
+      <!-- EDITOR MODAL: opent bij klikken op een ontwerp-kaart -->
+      <div class="editor-modal-overlay" id="editorModalOverlay">
+       <div class="editor-modal">
+        <div class="editor-modal-head">
+          <div class="editor-modal-title" id="editorModalTitle">Ontwerp bewerken</div>
+          <button class="editor-modal-close" onclick="sluitEditor()" title="Sluiten">&times;</button>
+        </div>
+        <div class="editor-modal-body">
+
+      <!-- Editor panel (in de modal) -->
       <div class="editor-panel" id="editorPanel">
 
         <!-- Toolbar -->
@@ -1804,7 +1877,14 @@
         </div>
       </div>
 
-      <!-- Meerdere ontwerpen: galerij van ontwerpen (elk zichtbaar, klik om te bewerken) -->
+        </div><!-- /editor-modal-body -->
+        <div class="editor-modal-foot">
+          <button class="btn-modal-klaar" id="btnModalKlaar" onclick="sluitEditor()">Klaar</button>
+        </div>
+       </div><!-- /editor-modal -->
+      </div><!-- /editor-modal-overlay -->
+
+      <!-- GALERIJ: hoofdweergave met alle ontwerpen als kaarten -->
       <div class="ontwerpen-blok" id="ontwerpenBlok">
         <div class="ontwerpen-titel" id="ontwerpenTitel" style="display:none">Jouw ontwerpen</div>
         <div class="ontwerpen-lijst" id="ontwerpenLijst"></div>
@@ -2690,6 +2770,7 @@
     ['btnFitContain','btnFitCover'].forEach(id => { const b=$(id); if(b){ b.disabled=false; b.style.opacity=''; b.style.cursor=''; } });
 
     // GALERIJ: maak een nieuw ontwerp aan (of vervang het bestand van het actieve).
+    let openIdx;
     if (actiefIdx < 0) {
       ontwerpen.push({
         file, fileAchter: null, aantal: state.qty || 1, drukzijde: state.drukzijde || 'enkel',
@@ -2697,15 +2778,20 @@
         rotation: 0, fitApplied: null, isPdf: false, compleet: false,
       });
       actiefIdx = ontwerpen.length - 1;
+      openIdx = actiefIdx;
     } else {
       const o = ontwerpen[actiefIdx];
       o.file = file; o.naam = file.name; o.origImgSrc = null; o.thumbnail = null;
       o.rotation = 0; o.fitApplied = null;
+      openIdx = actiefIdx;
     }
     renderOntwerpen();
 
+    // Verberg de upload-zone en open de editor-modal voor dit ontwerp.
     $('uploadZone').style.display = 'none';
-    $('editorPanel').classList.add('visible');
+    $('editorModalOverlay').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+    $('editorModalTitle').textContent = (file.name || 'Ontwerp') + ' bewerken';
     setFilenameLabel(file);
     $('canvasPlaceholder').style.display = 'flex';
     $('canvasPlaceholder').textContent = 'Bestand laden...';
@@ -2742,23 +2828,21 @@
     updateButton();
   }
 
-  // "Ander bestand" — vervang het bestand van het ACTIEVE ontwerp (blijft op z'n
-  // plek in de galerij, met hetzelfde aantal). De volgende upload landt hierin.
+  // "Ander bestand" in de modal — kies een vervangend bestand voor het actieve
+  // ontwerp. actiefIdx blijft staan, dus handleFile vervangt dit ontwerp.
   function vervangActiefBestand() {
-    if (actiefIdx < 0) { resetEditor(); return; }
-    state.file = null; imgEl = null; origImgEl = null; rotation = 0; pdfDoc = null;
-    resetFitState();
-    $('editorPanel').classList.remove('visible');
-    $('uploadZone').style.display = '';
-    $('fileInput').value = '';
-    $('uploadZone').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // actiefIdx blijft staan → handleFile vervangt het bestand van dit ontwerp
+    if (actiefIdx < 0) return;
+    // sluit de modal even zodat de upload-zone zichtbaar is voor het nieuwe bestand
+    const inp = $('fileInput');
+    if (inp) { inp.value = ''; inp.click(); }
   }
 
   function resetEditor() {
     state.file = null; imgEl = null; origImgEl = null; origFile = null; rotation = 0; pdfDoc = null;
     resetFitState();
     actiefIdx = -1;
+    $('editorModalOverlay')?.classList.remove('visible');
+    document.body.style.overflow = '';
     $('uploadZone').style.display = '';
     $('editorPanel').classList.remove('visible');
     $('pdfPageNav').classList.remove('visible');
@@ -2805,15 +2889,14 @@
     if (t) o.thumbnail = t;
   }
 
-  // Laad een ontwerp uit de galerij in de editor (maak het actief).
+  // Laad een ontwerp uit de galerij in de editor (maak het actief). Beheert géén
+  // paneel-zichtbaarheid meer — dat doet de modal (openEditor/sluitEditor).
   function activeerOntwerp(idx) {
     if (idx < 0 || idx >= ontwerpen.length) return;
-    // eerst huidige editor-staat bewaren
     if (actiefIdx >= 0 && actiefIdx !== idx) syncEditorNaarOntwerp();
     actiefIdx = idx;
     const o = ontwerpen[idx];
 
-    // Editor-state herstellen vanuit het ontwerp
     state.file       = o.file;
     state.fileAchter = o.fileAchter || null;
     state.drukzijde  = o.drukzijde || 'enkel';
@@ -2823,9 +2906,6 @@
     origUploadNaam   = (o.naam || '').replace(/\.[^.]+$/, '').replace(/_(a3|vk|fl)(passend|vullend)$/i, '');
     pdfDoc = null;
 
-    // UI bijwerken
-    $('uploadZone').style.display = 'none';
-    $('editorPanel').classList.add('visible');
     setFilenameLabel(o.file);
     setDrukzijde(o.drukzijde || 'enkel');
     // achterzijde-strip herstellen
@@ -2833,13 +2913,14 @@
       const zone=$('achterUploadZone'); if(zone) zone.style.display='none';
       const fn=$('achterFilename'); if(fn) fn.textContent = o.fileAchter.name + ' — ' + (o.fileAchter.size/1024/1024).toFixed(1) + ' MB';
       $('achterFileStrip')?.classList.add('visible');
+    } else {
+      $('achterFileStrip')?.classList.remove('visible');
+      const zone=$('achterUploadZone'); if(zone) zone.style.display='';
     }
     $('qtyInput').value = state.qty; syncDirectInput();
-    state.tierIndex = getTierIdx(state.qty);
+    state.tierIndex = getTierIdx(totaalAantal() || state.qty);
 
-    // Beeld opnieuw laden in de editor
     laadOntwerpBeeld(o);
-    renderOntwerpen();
     highlightTier(); updatePrice(); updateButton();
   }
 
@@ -2872,27 +2953,15 @@
     }
   }
 
-  // "Nog een ontwerp toevoegen" — bewaar het huidige, open de upload voor een nieuw ontwerp.
+  // "Nog een ontwerp toevoegen" — toon de upload-zone voor een nieuw bestand.
+  // Het nieuwe bestand opent daarna automatisch in de editor-modal.
   function nieuwOntwerpUpload() {
-    // huidige editor-staat bewaren in de galerij
-    if (actiefIdx >= 0) {
-      syncEditorNaarOntwerp();
-      // blokkeer als het actieve ontwerp dubbelzijdig-incompleet is
-      if (!ontwerpen[actiefIdx].compleet) {
-        alert('Je koos dubbelzijdig voor dit ontwerp — upload eerst de achterzijde voordat je een nieuw ontwerp toevoegt.');
-        return;
-      }
-    }
-    // editor loskoppelen en uploadzone tonen voor het volgende bestand
-    actiefIdx = -1;
+    actiefIdx = -1;   // volgende upload wordt een NIEUW ontwerp
     state.file = null; state.fileAchter = null; imgEl = null; origImgEl = null;
     rotation = 0; pdfDoc = null; resetFitState();
-    setDrukzijde('enkel');
-    $('editorPanel').classList.remove('visible');
     $('achterFileStrip')?.classList.remove('visible');
-    $('uploadZone').style.display = '';
     $('fileInput').value = '';
-    renderOntwerpen();
+    $('uploadZone').style.display = '';
     updateButton();
     $('uploadZone').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
@@ -2900,15 +2969,15 @@
   function verwijderOntwerp(idx) {
     if (idx < 0 || idx >= ontwerpen.length) return;
     ontwerpen.splice(idx, 1);
+    if (actiefIdx === idx) actiefIdx = -1;
+    else if (actiefIdx > idx) actiefIdx--;
     if (ontwerpen.length === 0) {
-      // niets meer over: editor leeg, terug naar begintoestand
+      // niets meer over: terug naar de upload-zone
       actiefIdx = -1;
-      resetEditor();
-    } else {
-      // activeer een buur-ontwerp
-      const nieuw = Math.min(idx, ontwerpen.length - 1);
-      actiefIdx = -1; // voorkom sync van het net-verwijderde
-      activeerOntwerp(nieuw);
+      state.file = null; imgEl = null; origImgEl = null; rotation = 0; pdfDoc = null;
+      resetFitState();
+      $('uploadZone').style.display = '';
+      $('fileInput').value = '';
     }
     renderOntwerpen();
     highlightTier(); updatePrice(); updateButton();
@@ -2929,50 +2998,45 @@
     ontwerpQty(idx, (ontwerpen[idx].aantal || 1) + d);
   }
 
-  // Tekent de galerij van ontwerpen (elk klikbaar, met eigen aantal-stepper).
+  // Tekent de galerij van ontwerp-kaarten (hoofdweergave). Klik op een kaart of
+  // op "Bewerken" opent de editor-modal voor dat ontwerp.
   function renderOntwerpen() {
     const lijst = $('ontwerpenLijst');
     const titel = $('ontwerpenTitel');
     const hint  = $('ontwerpenHint');
-    const btn   = $('btnAddOntwerp');
     if (!lijst) return;
 
     if (titel) titel.style.display = ontwerpen.length > 0 ? '' : 'none';
 
     lijst.innerHTML = ontwerpen.map((o, i) => {
       const thumb = o.thumbnail
-        ? `<img class="ontwerp-thumb" src="${o.thumbnail}" alt="">`
-        : `<div class="ontwerp-thumb"></div>`;
-      const zijde = o.drukzijde === 'dubbel' ? 'dubbelzijdig' : 'enkelzijdig';
+        ? `<img class="ontwerp-card-thumb" src="${o.thumbnail}" alt="" onclick="openEditor(${i})">`
+        : `<div class="ontwerp-card-thumb" onclick="openEditor(${i})"></div>`;
       const naamEsc = (o.naam || 'ontwerp').replace(/</g, '&lt;');
-      const actiefCls = i === actiefIdx ? ' actief' : '';
       const incompleet = o.drukzijde === 'dubbel' && !o.fileAchter;
       const incplCls = incompleet ? ' incompleet' : '';
-      const meta = incompleet
-        ? `<span class="waarschuw">⚠ achterzijde ontbreekt</span>`
-        : `${zijde}`;
-      return `<div class="ontwerp-item${actiefCls}${incplCls}" onclick="activeerOntwerp(${i})">
+      const zijdeBadge = o.drukzijde === 'dubbel'
+        ? (incompleet
+            ? `<span class="ontwerp-badge warn">⚠ achterzijde ontbreekt</span>`
+            : `<span class="ontwerp-badge">dubbelzijdig</span>`)
+        : `<span class="ontwerp-badge">enkelzijdig</span>`;
+      const fitBadge = o.fitApplied
+        ? `<span class="ontwerp-badge">${o.fitApplied === 'cover' ? 'vullend' : 'passend'}</span>` : '';
+      return `<div class="ontwerp-card${incplCls}">
         ${thumb}
-        <div class="ontwerp-info">
-          <div class="ontwerp-naam">${naamEsc}</div>
-          <div class="ontwerp-meta">${meta}</div>
+        <div class="ontwerp-card-body" onclick="openEditor(${i})">
+          <div class="ontwerp-card-naam">${naamEsc}</div>
+          <div class="ontwerp-card-meta">${zijdeBadge}${fitBadge}</div>
         </div>
-        <div class="ontwerp-qty" onclick="event.stopPropagation()">
+        <div class="ontwerp-card-qty" onclick="event.stopPropagation()">
           <button type="button" onclick="ontwerpQtyStap(${i},-1)" title="Minder">&minus;</button>
           <input type="number" min="1" max="9999" value="${o.aantal}" onchange="ontwerpQty(${i}, this.value)">
           <button type="button" onclick="ontwerpQtyStap(${i},1)" title="Meer">+</button>
         </div>
-        <button class="ontwerp-remove" onclick="event.stopPropagation(); verwijderOntwerp(${i})" title="Verwijder dit ontwerp">&times;</button>
+        <button class="ontwerp-card-edit" onclick="openEditor(${i})">Bewerken</button>
+        <button class="ontwerp-card-remove" onclick="event.stopPropagation(); verwijderOntwerp(${i})" title="Verwijder dit ontwerp">&times;</button>
       </div>`;
     }).join('');
-
-    // Toevoegknop: altijd beschikbaar zodra er minstens één (compleet) ontwerp is,
-    // of als er nog niets is (dan opent hij de eerste upload).
-    if (btn) {
-      const actiefIncompleet = actiefIdx >= 0 && ontwerpen[actiefIdx] &&
-        ontwerpen[actiefIdx].drukzijde === 'dubbel' && !ontwerpen[actiefIdx].fileAchter;
-      btn.disabled = actiefIncompleet;
-    }
 
     if (hint) {
       if (ontwerpen.length > 1) {
@@ -2983,6 +3047,29 @@
         hint.textContent = '';
       }
     }
+  }
+
+  // ── EDITOR-MODAL ─────────────────────────────────────────────────────────────
+  // Opent de editor-modal voor ontwerp idx.
+  function openEditor(idx) {
+    if (idx < 0 || idx >= ontwerpen.length) return;
+    activeerOntwerp(idx);  // laadt het ontwerp in de editor (state, beeld, drukzijde)
+    const o = ontwerpen[idx];
+    $('editorModalTitle').textContent = (o.naam || 'Ontwerp') + ' bewerken';
+    $('editorModalOverlay').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+    // canvas hertekenen zodra de modal zichtbaar is (afmetingen kloppen dan pas)
+    setTimeout(() => { if (imgEl) drawCanvas(); }, 60);
+  }
+
+  // Sluit de editor-modal. Bewaart de editor-staat terug in het actieve ontwerp.
+  function sluitEditor() {
+    if (actiefIdx >= 0) syncEditorNaarOntwerp();
+    $('editorModalOverlay').classList.remove('visible');
+    document.body.style.overflow = '';
+    actiefIdx = -1;  // editor losgekoppeld; galerij is weer de hoofdweergave
+    renderOntwerpen();
+    highlightTier(); updatePrice(); updateButton();
   }
 
   // ── AFLEVERADRES TOGGLE ────────────────────────────────────────────────────
@@ -3007,6 +3094,15 @@
   }
 
   window.addEventListener('resize',()=>{ if(imgEl) setTimeout(drawCanvas,50); });
+
+  // Editor-modal sluiten via klik op de achtergrond of Escape-toets.
+  const _modalOverlay = $('editorModalOverlay');
+  if (_modalOverlay) {
+    _modalOverlay.addEventListener('mousedown', e => { if (e.target === _modalOverlay) sluitEditor(); });
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && $('editorModalOverlay')?.classList.contains('visible')) sluitEditor();
+  });
   function updateButton() {
     const hasEmail=$('email').value.trim().includes('@');
     const heeftOntwerpen = ontwerpen.length > 0;
