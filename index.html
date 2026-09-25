@@ -1634,32 +1634,32 @@
 
     <!-- 3 BESTELSTAPPEN -->
     <div class="steps-bar" id="stepsBar">
-      <div class="step done" id="step1">
+      <div class="step active" id="step1">
         <div class="step-num">1</div>
         <div class="step-info">
           <div class="step-label">Stap 1</div>
-          <div class="step-title">Drukzijde</div>
-        </div>
-      </div>
-      <div class="step done" id="step2">
-        <div class="step-num">2</div>
-        <div class="step-info">
-          <div class="step-label">Stap 2</div>
-          <div class="step-title">Aantal</div>
-        </div>
-      </div>
-      <div class="step active" id="step3">
-        <div class="step-num">3</div>
-        <div class="step-info">
-          <div class="step-label">Stap 3</div>
           <div class="step-title">Upload ontwerp</div>
         </div>
       </div>
-      <div class="step" id="step4">
+      <div class="step" id="step2">
+        <div class="step-num">2</div>
+        <div class="step-info">
+          <div class="step-label">Stap 2</div>
+          <div class="step-title">Aantal &amp; drukzijde</div>
+        </div>
+      </div>
+      <div class="step" id="step3">
+        <div class="step-num">3</div>
+        <div class="step-info">
+          <div class="step-label">Stap 3</div>
+          <div class="step-title">Jouw gegevens</div>
+        </div>
+      </div>
+      <div class="step" id="step4" style="display:none">
         <div class="step-num">4</div>
         <div class="step-info">
           <div class="step-label">Stap 4</div>
-          <div class="step-title">Jouw gegevens</div>
+          <div class="step-title">Klaar</div>
         </div>
       </div>
     </div>
@@ -1676,46 +1676,17 @@
 
     <div class="staffel-wrap">
 
-      <!-- STAP 1: DRUKZIJDE -->
+      <!-- STAP 1: STAFFELPRIJZEN (drukzijde + aantal per ontwerp staan in de bewerk-modal) -->
       <div class="sectie-header">
         <div class="sectie-nr">1</div>
         <div>
-          <div class="sectie-titel">Drukzijde</div>
-          <div class="sectie-omschrijving">Enkelzijdig of dubbelzijdig bedrukt?</div>
+          <div class="sectie-titel">Staffelprijzen</div>
+          <div class="sectie-omschrijving">Meer stuks = lagere prijs per stuk. De korting geldt over al je ontwerpen samen.</div>
         </div>
       </div>
-      <div class="drukzijde-wrap">
-        <button class="drukzijde-btn active" id="btnEnkelzijdig" onclick="setDrukzijde('enkel')">
-          <span class="drukzijde-check">✓</span>
-          Enkelzijdig
-          <span class="drukzijde-sub">Bedrukt aan één kant — standaard prijs</span>
-        </button>
-        <button class="drukzijde-btn" id="btnDubbelzijdig" onclick="setDrukzijde('dubbel')">
-          <span class="drukzijde-check">✓</span>
-          Dubbelzijdig
-          <span class="drukzijde-sub">Bedrukt aan twee kanten — +25%</span>
-        </button>
-      </div>
-
-      <!-- STAP 2: AANTAL -->
-      <div class="sectie-header">
-        <div class="sectie-nr">2</div>
-        <div>
-          <div class="sectie-titel">Kies je aantal</div>
-          <div class="sectie-omschrijving">Meer stuks = lagere prijs per stuk</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-        <div class="qty-direct-wrap">
-          <span style="font-size:12px;color:var(--ink-muted);font-weight:500">Exact aantal:</span>
-          <div class="qty-direct-row">
-            <button class="qty-direct-btn" onclick="changeQty(-1)">&#8722;</button>
-            <input class="qty-direct-input" type="number" id="qtyDirect" min="1" max="9999" value="1"
-              oninput="syncQtyFromDirect(this.value)" onchange="syncQtyFromDirect(this.value)">
-            <button class="qty-direct-btn" onclick="changeQty(1)">&#43;</button>
-          </div>
-        </div>
-      </div>
+      <!-- verborgen exact-aantal input: nog gebruikt door interne logica vóór eerste upload -->
+      <input type="number" id="qtyDirect" min="1" max="9999" value="1" style="display:none"
+        oninput="syncQtyFromDirect(this.value)" onchange="syncQtyFromDirect(this.value)">
       <div class="staffel-grid" id="staffelGrid">
         <div class="staffel-item" data-min="1" data-max="1" data-price="9.75" onclick="selectStaffel(this)">
           <div class="staffel-qty">1</div>
@@ -1822,6 +1793,9 @@
           <span id="passendInfoText">Je afbeelding is passend gemaakt op A3 formaat met witte achtergrond en afloop.</span>
         </div>
 
+        <!-- Voorkant-label (alleen zichtbaar bij dubbelzijdig) -->
+        <div id="voorkantLabel" style="display:none;font-size:13px;font-weight:700;color:var(--green-dark);margin-bottom:6px">Voorkant</div>
+
         <!-- A3 Canvas met afloopzone -->
         <div class="canvas-container" id="canvasContainer">
           <canvas id="previewCanvas"></canvas>
@@ -1852,6 +1826,23 @@
           </div>
           <div class="dpi-text" id="dpiText">Bestand wordt geanalyseerd...</div>
           <div class="dpi-sub" id="dpiSub"></div>
+        </div>
+
+        <!-- DRUKZIJDE (per ontwerp, in de modal) -->
+        <div style="margin-top:14px">
+          <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px">Drukzijde van dit ontwerp</div>
+          <div class="drukzijde-wrap">
+            <button class="drukzijde-btn active" id="btnEnkelzijdig" onclick="setDrukzijde('enkel')">
+              <span class="drukzijde-check">✓</span>
+              Enkelzijdig
+              <span class="drukzijde-sub">Alleen de voorkant — standaard prijs</span>
+            </button>
+            <button class="drukzijde-btn" id="btnDubbelzijdig" onclick="setDrukzijde('dubbel')">
+              <span class="drukzijde-check">✓</span>
+              Dubbelzijdig
+              <span class="drukzijde-sub">Voor- én achterkant — +25%</span>
+            </button>
+          </div>
         </div>
 
       </div>
@@ -2210,11 +2201,12 @@
 
   function setDrukzijde(type) {
     state.drukzijde = type;
-    $('btnEnkelzijdig').classList.toggle('active', type === 'enkel');
-    $('btnDubbelzijdig').classList.toggle('active', type === 'dubbel');
-    // Toon/verberg achterzijde upload
+    $('btnEnkelzijdig')?.classList.toggle('active', type === 'enkel');
+    $('btnDubbelzijdig')?.classList.toggle('active', type === 'dubbel');
+    // Toon/verberg achterzijde upload + voorkant-label
     const achterSect = $('achterzijdeSection');
     if (achterSect) achterSect.classList.toggle('visible', type === 'dubbel');
+    const vl = $('voorkantLabel'); if (vl) vl.style.display = type === 'dubbel' ? '' : 'none';
     // Update prijzen in staffel
     updateStaffelPrijzen();
     if (typeof syncEditorNaarOntwerp === 'function') syncEditorNaarOntwerp();
@@ -3113,8 +3105,8 @@
     const needsAchter = heeftOntwerpen && !alleCompleet;
     const btn=$('orderBtn'), reason=$('btnReason');
 
-    // Stappen bijwerken (1 drukzijde en 2 aantal hebben altijd een geldige standaardkeuze)
-    const s1=$('step1'), s2=$('step2'), s3=$('step3'), s4=$('step4');
+    // Stappen bijwerken: 1 Upload → 2 Aantal&drukzijde → 3 Gegevens
+    const s1=$('step1'), s2=$('step2'), s3=$('step3');
     const hint=$('cardStepHint');
     function setStep(el, st) {
       if(!el) return;
@@ -3123,24 +3115,24 @@
       if(st === 'done') num.innerHTML = '&#10003;';
       else num.innerHTML = el.dataset.n;
     }
-    if(s1) s1.dataset.n='1'; if(s2) s2.dataset.n='2'; if(s3) s3.dataset.n='3'; if(s4) s4.dataset.n='4';
-    if(!heeftPosters && !hasFile){
-      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'active'); setStep(s4,'');
-      hint&&(hint.textContent='Upload je ontwerp om verder te gaan');
-    } else if(hasFile && needsAchter){
-      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'active'); setStep(s4,'');
-      hint&&(hint.textContent='Upload ook de achterzijde van je ontwerp');
+    if(s1) s1.dataset.n='1'; if(s2) s2.dataset.n='2'; if(s3) s3.dataset.n='3';
+    if(!heeftOntwerpen){
+      setStep(s1,'active'); setStep(s2,''); setStep(s3,'');
+      hint&&(hint.textContent='Upload je ontwerp om te beginnen');
+    } else if(needsAchter){
+      setStep(s1,'done'); setStep(s2,'active'); setStep(s3,'');
+      hint&&(hint.textContent='Eén ontwerp mist de achterzijde — open "Bewerken"');
     } else if(!hasEmail){
-      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'done'); setStep(s4,'active');
+      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'active');
       hint&&(hint.textContent='Vul je gegevens in om te bestellen');
     } else {
-      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'done'); setStep(s4,'done');
+      setStep(s1,'done'); setStep(s2,'done'); setStep(s3,'done');
       hint&&(hint.textContent='');
     }
 
-    if(!heeftPosters){btn.disabled=true;reason.textContent='Upload eerst je ontwerp (stap 3)';}
-    else if(hasFile && needsAchter){btn.disabled=true;reason.textContent='Upload ook de achterzijde (stap 3b)';}
-    else if(!hasEmail){btn.disabled=true;reason.textContent='Vul je e-mailadres in (stap 4)';}
+    if(!heeftOntwerpen){btn.disabled=true;reason.textContent='Upload eerst je ontwerp';}
+    else if(needsAchter){btn.disabled=true;reason.textContent='Eén ontwerp mist nog de achterzijde';}
+    else if(!hasEmail){btn.disabled=true;reason.textContent='Vul je e-mailadres in';}
     else{btn.disabled=false;reason.textContent='';}
 
     if (typeof renderOntwerpen === 'function') renderOntwerpen();
