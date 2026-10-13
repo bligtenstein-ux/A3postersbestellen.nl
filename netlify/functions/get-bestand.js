@@ -1,20 +1,48 @@
 // netlify/functions/get-bestand.js
-// Levert het drukbestand van een order als download — beveiligd met ADMIN_SECRET
-// Nieuw: ?zijde=achter haalt het achterzijde-bestand op (dubbelzijdige orders)
+// Levert het drukbestand van een order als download.
+// Auth: accepteert zowel een normale sessie (X-Session-Token) als het
+// noodwachtwoord (X-Admin-Secret) — gelijk aan get-orders.js.
+// ?zijde=achter haalt het achterzijde-bestand op (dubbelzijdige orders)
+// ?ontwerp=N haalt het bestand uit een specifiek ontwerp (multi-ontwerp orders)
 
 const { neon } = require('@neondatabase/serverless');
+
+// Controleer toegang: geldig sessie-token OF het juiste ADMIN_SECRET.
+// Geeft true terug bij geldige toegang, anders false.
+async function heeftToegang(event, sql) {
+  // 1) Noodtoegang via ADMIN_SECRET (headernaam case-insensitief ophalen)
+  const secret = event.headers['x-admin-secret'] || event.headers['X-Admin-Secret'];
+  if (secret && secret === process.env.ADMIN_SECRET) return true;
+
+  // 2) Normale sessie via X-Session-Token — geldig als het token bestaat
+  //    en nog niet is verlopen (admin_sessions.verloopt > NOW()).
+  const token = event.headers['x-session-token'] || event.headers['X-Session-Token'];
+  if (token) {
+    try {
+      const rows = await sql`
+        SELECT token FROM admin_sessions
+        WHERE token = ${token} AND verloopt > NOW()
+        LIMIT 1`;
+      if (rows.length) return true;
+    } catch (e) {
+      console.error('sessie-validatie fout:', e);
+    }
+  }
+  return false;
+}
 
 exports.handler = async (event) => {
   const cors = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Secret',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Secret, X-Session-Token',
   };
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
 
-  // Beveiliging — secret uitsluitend via header (niet via URL, dat lekt in logs/history)
-  const secret = event.headers['x-admin-secret'];
-  if (secret !== process.env.ADMIN_SECRET) {
+  const sql = neon(process.env.DATABASE_URL);
+
+  // Beveiliging — geldige sessie of noodwachtwoord vereist
+  if (!(await heeftToegang(event, sql))) {
     return { statusCode: 401, headers: { ...cors, 'Content-Type': 'application/json' },
              body: JSON.stringify({ error: 'Niet geautoriseerd' }) };
   }
@@ -28,7 +56,6 @@ exports.handler = async (event) => {
   }
 
   try {
-    const sql  = neon(process.env.DATABASE_URL);
     const rows = await sql`SELECT * FROM orders WHERE ordernummer = ${ordernummer}`;
 
     if (!rows.length) {
