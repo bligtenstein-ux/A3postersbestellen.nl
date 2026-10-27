@@ -13,6 +13,8 @@
 //     Als dat veld niet aankomt, is het adres alsnog leesbaar via de
 //     omschrijving. Logs tonen exact wat er is meegestuurd.
 //   - Defensieve adres-extractie (accepteert meerdere veldnamen).
+//   - Verzendkosten conditioneel: €2,95 incl. BTW voor <10 stuks,
+//     gratis v.a. 10 stuks. Aparte offerteregel voor verzendkosten.
 
 const GRIPP_API      = 'https://api.gripp.com/public/api3.php';
 const TEMPLATE_ID    = 40; // Buro Extern sjabloon
@@ -20,30 +22,28 @@ const PRODUCT_NUMMER = '1041'; // Drukwerk
 const PAPIERSOORT    = '170 grams Gloss MC';
 const TAG_COMMUNICATIE = 19; // Gripp-tag "Communicatie" — automatisch op elke webshop-offerte
 
-// Identity = de verkopende entiteit (Buro Extern) waaronder relaties/offertes
-// moeten vallen. De werkende DTF-calculator stuurt dit expliciet mee; deze site
-// deed dat niet — waardoor relaties mogelijk onder het parent-/"Extern"-account
-// belandden en het adres niet op de verwachte kaart verscheen.
-//
-// ⚠️ VUL HET JUISTE ID IN. Dit is NIET per se hetzelfde als TEMPLATE_ID (40).
-// Lees het af in Gripp onder Instellingen → Identiteiten & Sjablonen, of via
-// gripp-diag.js (?offerte=PS-... toont het identity-veld van een bestaande
-// a3-offerte, die al onder de juiste identiteit valt).
-// Zolang dit null is, wordt identity NIET meegestuurd (veilig — geen gok).
-const GRIPP_IDENTITY_ID = 2; // Buro Extern BV — geverifieerd via gripp-diag (offerte PS-78636)
+// Verzendkosten: €2,44 excl. BTW = €2,95 incl. BTW voor bestellingen < 10 stuks
+const VERZENDKOSTEN_EX_BTW = 2.44;
+const VERZENDKOSTEN_GRATIS_VANAF = 10;
 
 const STAFFEL = [
-  { min: 1,   max: 9,   prijs: 4.95 },
-  { min: 10,  max: 24,  prijs: 3.95 },
-  { min: 25,  max: 49,  prijs: 3.25 },
-  { min: 50,  max: 99,  prijs: 2.75 },
-  { min: 100, max: 249, prijs: 2.25 },
-  { min: 250, max: Infinity, prijs: 1.95 },
+  { min: 1,   max: 1,   prijs: 10.7025 },
+  { min: 2,   max: 2,   prijs: 7.0041  },
+  { min: 3,   max: 3,   prijs: 5.4959  },
+  { min: 4,   max: 4,   prijs: 4.7417  },
+  { min: 5,   max: 9,   prijs: 4.124   },
+  { min: 10,  max: 24,  prijs: 3.3017  },
+  { min: 25,  max: 49,  prijs: 2.643   },
+  { min: 50,  max: 99,  prijs: 1.6521  },
+  { min: 100, max: 249, prijs: 1.2393  },
+  { min: 250, max: 499, prijs: 0.8593  },
+  { min: 500, max: 999, prijs: 0.628   },
+  { min: 1000, max: Infinity, prijs: 0.4958 },
 ];
 
 function getPrijsPerStuk(aantal) {
   const tier = STAFFEL.find(t => aantal >= t.min && aantal <= t.max);
-  return tier ? tier.prijs : 1.95;
+  return tier ? tier.prijs : 0.4958;
 }
 
 // ── Gripp API aanroepen ─────────────────────────────────────────────────────
@@ -89,22 +89,6 @@ function extractAdres(klant = {}) {
     land:     (nested && (nested.land || nested.country))
            || klant.land || klant.country || 'Nederland',
   };
-}
-
-// Splitst een NL-adresstring ("Berenkoog 11", "Ligne 2A", "Da Costakade 158-3")
-// in straatnaam en huisnummer. Gripp heeft aparte velden visitingaddress_street
-// en visitingaddress_streetnumber. Nederlandse adressen zetten het nummer achteraan;
-// we pakken de laatste groep die met een cijfer begint (incl. toevoeging als 11A of 158-3).
-// Lukt het splitsen niet, dan gaat de hele string als straat mee en blijft nummer leeg.
-function splitStraatNummer(adresString) {
-  const s = (adresString || '').trim();
-  if (!s) return { street: '', number: '' };
-  // Match: alles vóór het laatste huisnummer = straat; het nummer + evt. toevoeging = number.
-  const m = s.match(/^(.*?)\s+(\d+\s*[-–]?\s*[a-zA-Z]?\d*.*)$/);
-  if (m) {
-    return { street: m[1].trim(), number: m[2].trim() };
-  }
-  return { street: s, number: '' };
 }
 
 // De frontend stuurt het afwijkend afleveradres als klant.afleveradres
@@ -265,140 +249,54 @@ async function haalProductId(token) {
 }
 
 // ── Klant zoeken of aanmaken ────────────────────────────────────────────────
-
-// Bouwt een object met company-adresvelden, maar ALLEEN de velden die
-// daadwerkelijk gevuld zijn. Zo overschrijven we bij een update nooit
-// bestaande gegevens in Gripp met een lege string.
-//
-// VELDNAMEN: we sturen BEIDE bekende sets mee, omdat twee betrouwbare bronnen
-// elkaar tegenspreken en Gripp onbekende velden stil negeert (dus dubbel sturen
-// is veilig):
-//   1. address / zipcode / city / country — deze set draait aantoonbaar correct
-//      op de DTF-calculator (zelfde Gripp-account). Straat+huisnummer samen.
-//   2. visitingaddress_street / _streetnumber / _zipcode / _city / _country —
-//      de namen uit de officiële company-velddocumentatie. Huisnummer apart.
-// Welke van de twee jouw Gripp daadwerkelijk gebruikt, blijkt uit gripp-diag.js
-// (company_ophalen_op_id toont de echte veldnamen). Zodra dat bekend is, kan de
-// overbodige set eruit. Tot dan: beide, want dat kan geen kwaad.
-function companyAdresVelden(klant, adresInfo, { inclusiefContact = true } = {}) {
-  const velden = {};
-  const { street, number } = splitStraatNummer(adresInfo.adres);
-
-  // Set 1 — DTF-bewezen namen (straat+huisnummer samen)
-  if (adresInfo.adres)    velden.address = adresInfo.adres;
-  if (adresInfo.postcode) velden.zipcode = adresInfo.postcode;
-  if (adresInfo.stad)     velden.city    = adresInfo.stad;
-  if (adresInfo.land)     velden.country = adresInfo.land;
-
-  // Set 2 — velddoc-namen (huisnummer apart)
-  if (street)             velden.visitingaddress_street       = street;
-  if (number)             velden.visitingaddress_streetnumber = number;
-  if (adresInfo.postcode) velden.visitingaddress_zipcode      = adresInfo.postcode;
-  if (adresInfo.stad)     velden.visitingaddress_city         = adresInfo.stad;
-  if (adresInfo.land)     velden.visitingaddress_country      = adresInfo.land;
-
-  if (inclusiefContact) {
-    if (klant.telefoon) velden.phone = klant.telefoon;
-    if (klant.email)    velden.email = klant.email;
-  }
-  return velden;
-}
-
-// Werkt het adres (en telefoon/e-mail) van een BESTAANDE relatie bij. Alleen
-// niet-lege velden worden meegestuurd, dus bestaande gegevens in Gripp gaan
-// nooit verloren door een lege waarde. Faalt de update, dan blijft de order
-// gewoon doorgaan (we loggen het) — een ontbrekend adres mag geen order blokkeren.
-// Update-signatuur volgt het bewezen patroon uit offer.update: params = [id, {velden}].
-async function werkAdresBij(token, companyId, klant, adresInfo) {
-  const velden = companyAdresVelden(klant, adresInfo);
-  if (Object.keys(velden).length === 0) {
-    console.log(`[gripp-order] Geen adresvelden om bij te werken voor relatie ${companyId}`);
-    return;
-  }
-  try {
-    await gripp(token, [{
-      method: 'company.update',
-      params: [companyId, velden],
-      id: 1,
-    }]);
-    console.log(`[gripp-order] ✓ Adres bijgewerkt op bestaande relatie ${companyId}: ${Object.keys(velden).join(', ')}`);
-  } catch (err) {
-    console.warn(`[gripp-order] ⚠️ Adres bijwerken op relatie ${companyId} mislukt (order gaat door): ${err.message}`);
-  }
-}
-
 async function zoekOfMaakRelatie(token, klant) {
   const adresInfo = extractAdres(klant);
 
-  // BELANGRIJK: company.search BESTAAT NIET in Gripp (geeft error
-  // "API_search() does not exist"). De juiste lees-methode is company.get met
-  // [[filters], { paging }]. Geverifieerd via gripp-diag. Dit was de oorzaak van
-  // de duplicaat-relaties: elke zoekopdracht faalde stil, dus werd er telkens
-  // een nieuwe company aangemaakt.
   if (klant.kvk) {
     const res = await gripp(token, [{
-      method: 'company.get',
-      params: [
-        [{ field: 'company.cocnumber', operator: 'equals', value: klant.kvk }],
-        { paging: { firstresult: 0, maxresults: 1 } },
-      ],
+      method: 'company.search',
+      params: [[{ field: 'company.cocnumber', operator: 'equals', value: klant.kvk }], {}, 1, 0],
       id: 1,
     }]);
     const rows = res[0]?.result?.rows;
     if (rows?.length > 0) {
-      const bestaandId = rows[0].id;
-      console.log(`[gripp-order] Bestaande relatie gevonden op KVK: id=${bestaandId}`);
-      await werkAdresBij(token, bestaandId, klant, adresInfo);
-      return bestaandId;
+      console.log(`[gripp-order] Bestaande relatie gevonden op KVK: id=${rows[0].id}`);
+      return rows[0].id;
     }
   }
 
   const res2 = await gripp(token, [{
-    method: 'company.get',
-    params: [
-      [{ field: 'company.email', operator: 'equals', value: klant.email }],
-      { paging: { firstresult: 0, maxresults: 1 } },
-    ],
+    method: 'company.search',
+    params: [[{ field: 'company.email', operator: 'equals', value: klant.email }], {}, 1, 0],
     id: 1,
   }]);
   const rows2 = res2[0]?.result?.rows;
   if (rows2?.length > 0) {
-    const bestaandId = rows2[0].id;
-    console.log(`[gripp-order] Bestaande relatie gevonden op e-mail: id=${bestaandId}`);
-    await werkAdresBij(token, bestaandId, klant, adresInfo);
-    return bestaandId;
+    console.log(`[gripp-order] Bestaande relatie gevonden op e-mail: id=${rows2[0].id}`);
+    return rows2[0].id;
   }
 
   console.log(`[gripp-order] Nieuwe relatie aanmaken — bedrijf="${klant.bedrijf || klant.naam || klant.email}", adres="${adresInfo.adres}", postcode="${adresInfo.postcode}", stad="${adresInfo.stad}"`);
 
-  // Adresvelden via dezelfde helper als de update, zodat create en update
-  // dezelfde velden zetten.
-  const adresVelden = companyAdresVelden(klant, adresInfo, { inclusiefContact: false });
-
-  const createParams = {
-    companyname: klant.bedrijf || klant.naam || klant.email,
-    email:       klant.email,
-    cocnumber:   klant.kvk || '',
-    phone:       klant.telefoon || '',
-    ...adresVelden,
-    relationtype: { id: 1 },
-  };
-  // Identity alleen meesturen als het ID is ingevuld (anders geen gok).
-  if (GRIPP_IDENTITY_ID != null) {
-    createParams.identity = { id: GRIPP_IDENTITY_ID };
-  }
-
   const nieuw = await gripp(token, [{
     method: 'company.create',
-    params: [createParams],
+    params: [{
+      companyname: klant.bedrijf || klant.naam || klant.email,
+      email:       klant.email,
+      cocnumber:   klant.kvk || '',
+      phone:       klant.telefoon || '',
+      address:     adresInfo.adres,
+      zipcode:     adresInfo.postcode,
+      city:        adresInfo.stad,
+      country:     adresInfo.land,
+      relationtype: { id: 1 },
+    }],
     id: 1,
   }]);
 
-  // HTTP 200 ≠ succes bij Gripp — check expliciet op result.id én op een error.
-  const fout = nieuw[0]?.error || nieuw[0]?.error_text;
   const id = nieuw[0]?.result?.id || nieuw[0]?.result?.recordid;
-  if (!id) throw new Error('Relatie aanmaken mislukt' + (fout ? ` (${fout})` : '') + ': ' + JSON.stringify(nieuw[0]));
-  console.log(`[gripp-order] ✓ Nieuwe relatie aangemaakt: id=${id}${GRIPP_IDENTITY_ID != null ? ` (identity=${GRIPP_IDENTITY_ID})` : ''} (adresvelden: ${Object.keys(adresVelden).join(', ') || 'geen'})`);
+  if (!id) throw new Error('Relatie aanmaken mislukt: ' + JSON.stringify(nieuw[0]?.result));
+  console.log(`[gripp-order] ✓ Nieuwe relatie aangemaakt: id=${id}`);
   return id;
 }
 
@@ -438,54 +336,30 @@ function bewerkingInstructies(bewerking) {
 // De bestemming staat al apart in het Gripp "Bestemming"-veld
 // (workdeliveraddress) — dus die wordt hier niet meer herhaald.
 function bouwOfferteBeschrijving({ aantal, prijsPerStuk, methode, bestelling,
-                                    klant, adresInfo, bestemming }) {
-  const ontwerpenLijst = Array.isArray(bestelling.ontwerpen) && bestelling.ontwerpen.length > 1
-    ? bestelling.ontwerpen : null;
+                                    klant, adresInfo, bestemming, verzendkosten }) {
+  const heeftVerzendkosten = verzendkosten > 0;
+  const verzendLabel = methode === 'afhalen'
+    ? 'Afhalen te Alkmaar (gratis)'
+    : heeftVerzendkosten
+      ? `€${(verzendkosten * 1.21).toFixed(2)} incl. BTW (${bestelling.verzendland || bestemming.land || 'NL'})`
+      : `Gratis (${bestelling.verzendland || bestemming.land || 'NL'})`;
 
-  let regels;
-  if (ontwerpenLijst) {
-    // Meerdere ontwerpen: overzicht per ontwerp, plus het totaal.
-    regels = [
-      `Bestelling: ${aantal}× A3 poster totaal — ${ontwerpenLijst.length} ontwerpen`,
-      `Papiersoort: ${PAPIERSOORT}`,
-      '',
-      '── Ontwerpen ──',
-    ];
-    ontwerpenLijst.forEach((o, i) => {
-      const zijde = o.drukzijde === 'dubbel' ? 'dubbelzijdig' : 'enkelzijdig';
-      regels.push(
-        `Ontwerp ${i + 1}: ${o.aantal}× (${zijde}) — €${Number(o.prijs_per_stuk).toFixed(2)} p/st`
-        + (o.bestandsnaam ? ` — ${o.bestandsnaam}` : '')
-        + (o.bestandsnaam_achter ? ` + achter: ${o.bestandsnaam_achter}` : '')
-      );
-    });
-    regels.push(
-      '',
-      '── Klant ──',
-      klant.bedrijf  ? `Bedrijf: ${klant.bedrijf}`   : '',
-      klant.naam     ? `Naam: ${klant.naam}`         : '',
-      klant.email    ? `E-mail: ${klant.email}`      : '',
-      klant.telefoon ? `Telefoon: ${klant.telefoon}` : '',
-      klant.kvk      ? `KVK: ${klant.kvk}`           : '',
-    );
-  } else {
-    regels = [
-      `Bestelling: ${aantal}× A3 poster`,
-      `Papiersoort: ${PAPIERSOORT}`,
-      `Prijs p/st: €${prijsPerStuk.toFixed(2)}`,
-      bestelling.drukzijde ? `Drukzijde: ${bestelling.drukzijde}` : '',
-      // Bewerkingsinstructies (rotatie / passend / vullend) — het originele
-      // bestand is ongewijzigd, deze instructies moeten bij druk worden toegepast.
-      ...bewerkingInstructies(bestelling.bewerking),
-      '',
-      '── Klant ──',
-      klant.bedrijf  ? `Bedrijf: ${klant.bedrijf}`   : '',
-      klant.naam     ? `Naam: ${klant.naam}`         : '',
-      klant.email    ? `E-mail: ${klant.email}`      : '',
-      klant.telefoon ? `Telefoon: ${klant.telefoon}` : '',
-      klant.kvk      ? `KVK: ${klant.kvk}`           : '',
-    ];
-  }
+  const regels = [
+    `Bestelling: ${aantal}× A3 poster`,
+    `Papiersoort: ${PAPIERSOORT}`,
+    `Prijs p/st: €${prijsPerStuk.toFixed(4)}`,
+    bestelling.drukzijde ? `Drukzijde: ${bestelling.drukzijde}` : '',
+    // Bewerkingsinstructies (rotatie / passend / vullend) — het originele
+    // bestand is ongewijzigd, deze instructies moeten bij druk worden toegepast.
+    ...bewerkingInstructies(bestelling.bewerking),
+    '',
+    '── Klant ──',
+    klant.bedrijf  ? `Bedrijf: ${klant.bedrijf}`   : '',
+    klant.naam     ? `Naam: ${klant.naam}`         : '',
+    klant.email    ? `E-mail: ${klant.email}`      : '',
+    klant.telefoon ? `Telefoon: ${klant.telefoon}` : '',
+    klant.kvk      ? `KVK: ${klant.kvk}`           : '',
+  ];
 
   // Toon factuuradres apart alleen als het afwijkt van de bestemming
   if (bestemming.isAfwijkend) {
@@ -500,9 +374,7 @@ function bouwOfferteBeschrijving({ aantal, prijsPerStuk, methode, bestelling,
 
   regels.push(
     '',
-    methode === 'afhalen'
-      ? 'Verzending: Afhalen te Alkmaar (gratis)'
-      : `Verzending: gratis (${bestelling.verzendland || bestemming.land || 'NL'})`,
+    `Verzending: ${verzendLabel}`,
     bestelling.opmerkingen ? `Opmerking: ${bestelling.opmerkingen}` : '',
     bestelling.bestandsnaam ? `Bestand: ${bestelling.bestandsnaam}` : '',
   );
@@ -587,28 +459,27 @@ exports.handler = async (event) => {
     const methode      = bestelling.verzendmethode ?? 'verzenden';
     const ordernummer  = bestelling.ordernummer || `PS-${Date.now()}`;
 
-    // Offerteregels — één regel per ontwerp. Bij meerdere ontwerpen deelt elke
-    // regel dezelfde staffelprijs (bepaald door het totaal, door de frontend al
-    // per ontwerp meegegeven als prijs_per_stuk). Valt terug op één regel als er
-    // geen ontwerpen[]-lijst is (oude flow / backwards-compatible).
-    const offerlines = [];
-    const ontwerpenLijst = Array.isArray(body.ontwerpen) && body.ontwerpen.length > 0
-      ? body.ontwerpen : null;
+    // Verzendkosten: frontend stuurt bestelling.verzendkosten (excl. BTW).
+    // Fallback: zelf berekenen op basis van aantal als het veld ontbreekt.
+    const verzendkosten = (typeof bestelling.verzendkosten === 'number')
+      ? bestelling.verzendkosten
+      : (aantal < VERZENDKOSTEN_GRATIS_VANAF ? VERZENDKOSTEN_EX_BTW : 0);
 
-    if (ontwerpenLijst) {
-      ontwerpenLijst.forEach((o, i) => {
-        const oAantal = parseInt(o.aantal) || 0;
-        const oPrijs  = o.prijs_per_stuk ?? prijsPerStuk;
-        const zijde   = o.drukzijde === 'dubbel' ? ' dubbelzijdig' : '';
-        const bnaam   = o.bestandsnaam ? ` (bestand: ${o.bestandsnaam})` : '';
-        offerlines.push(maakRegel(
-          productId, oAantal, oPrijs,
-          `A3 poster full color${zijde} — ${PAPIERSOORT} — ontwerp ${i + 1}${bnaam}`,
-        ));
-      });
-    } else {
-      const bestandsinfo = bestelling.bestandsnaam ? ` (bestand: ${bestelling.bestandsnaam})` : '';
-      offerlines.push(maakRegel(productId, aantal, prijsPerStuk, `A3 poster full color — ${PAPIERSOORT}${bestandsinfo}`));
+    console.log(`[gripp-order] Verzendkosten: €${verzendkosten.toFixed(2)} excl. BTW (${aantal} stuks)`);
+
+    // Offerteregels
+    const offerlines = [];
+    const bestandsinfo = bestelling.bestandsnaam ? ` (bestand: ${bestelling.bestandsnaam})` : '';
+    offerlines.push(maakRegel(productId, aantal, prijsPerStuk, `A3 poster full color — ${PAPIERSOORT}${bestandsinfo}`));
+
+    // Verzendkosten als aparte offerteregel (alleen als > 0)
+    if (verzendkosten > 0) {
+      offerlines.push(maakRegel(
+        productId,
+        1,
+        verzendkosten,
+        `Verzendkosten (${bestelling.verzendland || bestemming.land || 'NL'})`,
+      ));
     }
 
     if (bestelling.korting?.bedrag > 0) {
@@ -623,44 +494,30 @@ exports.handler = async (event) => {
     const today   = new Date().toISOString().split('T')[0];
     const subject = `A3 poster order ${ordernummer}`;
     const description = bouwOfferteBeschrijving({
-      aantal, prijsPerStuk, methode, bestelling, klant, adresInfo, bestemming,
+      aantal, prijsPerStuk, methode, bestelling, klant, adresInfo, bestemming, verzendkosten,
     });
 
     // Bestemming als tekst voor Gripp's Bestemming-veld
     const bestemmingText = formatBestemming(bestemming);
 
     // ── Drukbestand(en) uploaden naar Gripp en aan de offerte koppelen ──────
-    // Bij meerdere ontwerpen uploaden we alle bestanden (voor + evt. achter per
-    // ontwerp). Valt terug op de topniveau-velden als er geen ontwerpen[] is.
+    // De frontend stuurt de base64 mee (dezelfde velden als naar save-order).
+    // We geven het bestand een naam met het ordernummer erin, zodat het in
+    // Gripp herkenbaar bij de juiste order hoort.
     const fileIds = [];
 
-    if (ontwerpenLijst) {
-      for (let i = 0; i < ontwerpenLijst.length; i++) {
-        const o = ontwerpenLijst[i];
-        if (o.bestand_data) {
-          const naamVoor = `${ordernummer}-ontwerp${i + 1}-${o.bestandsnaam || o.bestand_naam || 'voorzijde'}`;
-          const idVoor = await uploadBestand(token, o.bestand_data, naamVoor);
-          if (idVoor) fileIds.push(idVoor);
-        }
-        if (o.bestand_data_achter) {
-          const naamAchter = `${ordernummer}-ontwerp${i + 1}-achterzijde-${o.bestandsnaam_achter || o.bestand_naam_achter || 'achterzijde'}`;
-          const idAchter = await uploadBestand(token, o.bestand_data_achter, naamAchter);
-          if (idAchter) fileIds.push(idAchter);
-        }
-      }
+    if (body.bestand_data) {
+      const naamVoor = `${ordernummer}-${bestelling.bestandsnaam || body.bestand_naam || 'voorzijde'}`;
+      const idVoor = await uploadBestand(token, body.bestand_data, naamVoor);
+      if (idVoor) fileIds.push(idVoor);
     } else {
-      if (body.bestand_data) {
-        const naamVoor = `${ordernummer}-${bestelling.bestandsnaam || body.bestand_naam || 'voorzijde'}`;
-        const idVoor = await uploadBestand(token, body.bestand_data, naamVoor);
-        if (idVoor) fileIds.push(idVoor);
-      } else {
-        console.log('[gripp-order] Geen bestand_data meegestuurd — geen bijlage geüpload naar Gripp.');
-      }
-      if (body.bestand_data_achter) {
-        const naamAchter = `${ordernummer}-achterzijde-${bestelling.bestandsnaam_achter || body.bestand_naam_achter || 'achterzijde'}`;
-        const idAchter = await uploadBestand(token, body.bestand_data_achter, naamAchter);
-        if (idAchter) fileIds.push(idAchter);
-      }
+      console.log('[gripp-order] Geen bestand_data meegestuurd — geen bijlage geüpload naar Gripp.');
+    }
+
+    if (body.bestand_data_achter) {
+      const naamAchter = `${ordernummer}-achterzijde-${bestelling.bestandsnaam_achter || body.bestand_naam_achter || 'achterzijde'}`;
+      const idAchter = await uploadBestand(token, body.bestand_data_achter, naamAchter);
+      if (idAchter) fileIds.push(idAchter);
     }
 
     console.log(`[gripp-order] ${fileIds.length} bestand(en) gekoppeld aan offerte: [${fileIds.join(', ')}]`);
