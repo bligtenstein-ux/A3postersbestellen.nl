@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8"><!-- v2.1 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>A3 Posters Drukken | Snel & Goedkoop | A3postersbestellen.nl</title>
+<title>A3 Posters Drukken | Morgen in huis | A3postersbestellen.nl</title>
 <meta name="description" content="A3 posters drukken vanaf €12,95 per stuk. Gratis verzending v.a. 10 stuks, morgen in huis, betaal achteraf. Upload je ontwerp en ontvang kreukvrij bezorgd in koker.">
 <meta name="keywords" content="A3 poster drukken, A3 posters bestellen, A3 poster laten drukken, goedkope A3 poster, A3 poster online">
 <link rel="canonical" href="https://a3postersbestellen.nl/">
-<meta property="og:title" content="A3 Posters Drukken | Snel & Goedkoop | A3postersbestellen.nl">
+<meta property="og:title" content="A3 Posters Drukken | Morgen in huis | A3postersbestellen.nl">
 <meta property="og:description" content="A3 posters drukken vanaf €12,95. Gratis verzending v.a. 10 stuks, morgen in huis, betaal achteraf op factuur.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://a3postersbestellen.nl/">
@@ -18,7 +18,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="A3 Posters drukken — snel, scherp en persoonlijk">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="A3 Posters Drukken | Snel & Goedkoop | A3postersbestellen.nl">
+<meta name="twitter:title" content="A3 Posters Drukken | Morgen in huis | A3postersbestellen.nl">
 <meta name="twitter:description" content="A3 posters drukken vanaf €12,95. Gratis verzending v.a. 10 stuks, morgen in huis, betaal achteraf op factuur.">
 <meta name="twitter:image" content="https://a3postersbestellen.nl/og-image.png">
 <meta name="robots" content="index, follow">
@@ -154,6 +154,7 @@
     align-items: center;
     gap: 12px;
   }
+  .logo-img { width: 52px; height: 52px; border-radius: 8px; flex-shrink: 0; display: block; }
   .logo-mark {
     width: 40px;
     height: 40px;
@@ -1085,6 +1086,19 @@
   .review-stars { color: #f59e0b; font-size: 13px; margin-bottom: 6px; letter-spacing: 1px; }
   .review-text { font-size: 12px; color: var(--ink-mid); line-height: 1.55; margin-bottom: 8px; font-style: italic; }
   .review-author { font-size: 11px; font-weight: 700; color: var(--ink-muted); }
+  .reviews-google {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; margin-bottom: 10px;
+    border: 1px solid var(--line); border-radius: var(--radius-md);
+    background: #fff; color: var(--ink-mid); text-decoration: none;
+    font-size: 13px; line-height: 1.4;
+  }
+  .reviews-google:hover { border-color: var(--green); }
+  .reviews-google img { border-radius: 6px; flex-shrink: 0; }
+  .reviews-google small { color: var(--ink-muted); font-size: 11px; }
+  .reviews-google .review-stars { display: inline; margin: 0; }
+  .be-link { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+  .be-logo { border-radius: 3px; display: inline-block; }
 
   /* ── FAQ ── */
   .faq-list { margin-bottom: 2rem; }
@@ -1505,13 +1519,10 @@
 
 <nav>
   <a class="logo" href="#">
-    <div class="logo-mark">
-      A3
-      <span class="logo-mark-sub">poster</span>
-    </div>
+    <img class="logo-img" src="buro-extern-logo.jpg" alt="Buro Extern" width="52" height="52">
     <div>
       <div class="logo-name"><em>A3posters</em>bestellen.nl</div>
-      <div class="logo-powered">Powered by <a href="https://extern.nl" target="_blank">Buro Extern</a></div>
+      <div class="logo-powered">Powered by <a href="https://extern.nl" target="_blank" class="be-link">Buro Extern</a></div>
     </div>
   </a>
   <div class="nav-links">
@@ -1533,7 +1544,7 @@
 
     <a class="hero-rating" href="#reviews">
       <span class="hero-rating-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
-      <span>Bekijk wat klanten over ons zeggen &rarr;</span>
+      <span><strong>5,0</strong> op Google &middot; reviews van Buro Extern &rarr;</span>
     </a>
 
     <div class="hero-usps">
@@ -1925,22 +1936,26 @@
     </div>
 
     <!-- REVIEWS -->
-    <div class="section-label" id="reviews">Wat klanten zeggen</div>
+    <div class="section-label" id="reviews">Wat klanten zeggen over Buro Extern</div>
+    <a class="reviews-google" href="https://www.google.com/maps/place/Buro+Extern+B.V./@52.6440588,4.7812895,17z/data=!4m8!3m7!1s0x47cf565e751ddfad:0x284c3d49cd8ad6cc!8m2!3d52.6440588!4d4.7812895!9m1!1b1" target="_blank" rel="noopener">
+      <img src="buro-extern-logo.jpg" alt="Buro Extern" width="40" height="40">
+      <span><span class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span> <strong>5,0</strong> op Google &middot; 6 reviews<br><small>A3postersbestellen.nl is een dienst van Buro Extern in Alkmaar &rarr; bekijk alle reviews</small></span>
+    </a>
     <div class="reviews-row">
       <div class="review-card">
         <div class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-        <div class="review-text">"Snelle levering en de kwaliteit is echt top. Besteld op dinsdag voor 11:00, woensdag al in huis. Zeker herhalen!"</div>
-        <div class="review-author">Marieke V. — Eventbureau Amsterdam</div>
+        <div class="review-text">"Al jaren is BuroExtern onze vaste partner voor het drukken, opslaan en versturen van materialen. We zijn heel blij met de redelijke prijzen en zorgvuldige dienstverlening."</div>
+        <div class="review-author">Stichting VoorleesExpress &middot; Google-review</div>
       </div>
       <div class="review-card">
         <div class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-        <div class="review-text">"Fijn dat je achteraf betaalt en dat ze je bestand checken. Bij een andere drukker had ik een keer een wazig ontwerp, hier niet."</div>
-        <div class="review-author">Tom de B. — Horecaondernemer</div>
+        <div class="review-text">"Ze leveren kwaliteit op alle fronten: professionele medewerkers die kunnen meedenken en adviseren."</div>
+        <div class="review-author">Carina W. &middot; educatieve uitgeverij &middot; Google-review</div>
       </div>
       <div class="review-card">
         <div class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-        <div class="review-text">"50 posters voor onze sportvereniging — perfect geprint, geen enkele kreuk. En voor een eerlijke prijs. Aanrader!"</div>
-        <div class="review-author">Sandra K. — Sportvereniging Rotterdam</div>
+        <div class="review-text">"Goede service, zeer professionele verwerking en fantastische samenwerking!"</div>
+        <div class="review-author">Miriam O. &middot; Google-review</div>
       </div>
     </div>
 
@@ -3074,7 +3089,7 @@
 
 <footer style="border-top:1px solid var(--line);padding:1.5rem 2rem;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--ink-muted);flex-wrap:wrap;gap:0.75rem;">
   <div style="display:flex;align-items:center;gap:10px;">
-    <div style="width:24px;height:24px;background:var(--green);border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;flex-shrink:0;">A3</div>
+    <img src="buro-extern-logo.jpg" alt="Buro Extern" width="28" height="28" style="border-radius:4px;flex-shrink:0;">
     <span>Powered by <a href="https://extern.nl" target="_blank" style="color:var(--green);text-decoration:none;font-weight:600;">Buro Extern</a></span>
   </div>
   <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
