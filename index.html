@@ -2894,7 +2894,7 @@
         prijs_per_stuk:      eerste.prijs_per_stuk,
         drukzijde:           eerste.drukzijde,
         verzendmethode:      'verzenden',
-        verzendkosten:       0,
+        verzendkosten:       totaal < 10 ? 2.44 : 0, // €2,95 incl. BTW voor <10 stuks
         verzendland:         $('country')?.value || 'NL',
         bestandsnaam:        eerste.bestandsnaam,
         bestandsnaam_achter: eerste.bestandsnaam_achter,
