@@ -77,13 +77,28 @@
   ]
 }
 </script>
-<!-- Google Analytics 4 — vervang G-XXXXXXXXXX door je eigen GA4 meet-ID -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<!-- Google tag (Google Ads, account Extern 5414037868)
+     Conversieactie: "Aankoop a3postersbestellen.nl" (ID 7875313421).
+     Vul hieronder ALLEEN de tag-ID en het conversielabel in (Google Ads → Doelen →
+     Conversies → Aankoop a3postersbestellen.nl → Tag instellen → Tag zelf installeren:
+     send_to: 'AW-123456789/AbCdEf...'  → ID vóór de '/', label erna). -->
 <script>
+  window.A3_ADS_ID    = 'AW-17145133048';          // Google Ads tag-ID
+  window.A3_ADS_LABEL = 'dL6yCI3-nqsdEPjvt-8_';    // conversielabel "Aankoop a3postersbestellen.nl"
+  window.A3_GA4_ID    = '';                       // optioneel: GA4 meet-ID, bijv. 'G-ABC123'
+</script>
+<script>
+  (function(){
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(window.A3_ADS_ID);
+    document.head.appendChild(s);
+  })();
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', 'G-XXXXXXXXXX');
+  gtag('config', window.A3_ADS_ID, { allow_enhanced_conversions: true });
+  if (window.A3_GA4_ID) gtag('config', window.A3_GA4_ID);
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2984,19 +2999,44 @@
               'Zodra wij je bestand(en) hebben, gaan wij direct aan de slag.');
       }
 
-      // Conversie-tracking — alleen bij succes.
-      if (typeof gtag === 'function') {
-        const orderWaarde = ontwerpenPayload.reduce((s, o) => s + o.prijs_per_stuk * o.aantal, 0);
-        gtag('event', 'purchase', {
-          transaction_id: ordernummer,
-          value: orderWaarde,
-          currency: 'EUR',
-          items: ontwerpenPayload.map((o, i) => ({
-            item_name: 'A3 poster' + (o.drukzijde === 'dubbel' ? ' (dubbelzijdig)' : ''),
-            quantity: o.aantal, price: o.prijs_per_stuk,
-          })),
-        });
-      }
+      // Conversie-tracking — alleen bij succes, niet voor interne/testorders.
+      try {
+        const INTERNE_ADRESSEN = ['bligtenstein@gmail.com'];
+        const INTERNE_DOMEINEN = ['@extern.nl', '@koopsmakelaardij.nl'];
+        const mailLower = (email || '').trim().toLowerCase();
+        const isIntern  = INTERNE_ADRESSEN.includes(mailLower) ||
+                          INTERNE_DOMEINEN.some(d => mailLower.endsWith(d));
+
+        if (typeof gtag === 'function' && !isIntern) {
+          // Omzet excl. btw en excl. verzendkosten
+          const orderWaarde = Math.round(
+            ontwerpenPayload.reduce((s, o) => s + o.prijs_per_stuk * o.aantal, 0) * 100
+          ) / 100;
+
+          // Enhanced conversions: Google hasht het e-mailadres zelf
+          gtag('set', 'user_data', { email: mailLower });
+
+          // Google Ads-aankoopconversie
+          gtag('event', 'conversion', {
+            send_to:        window.A3_ADS_ID + '/' + window.A3_ADS_LABEL,
+            value:          orderWaarde,
+            currency:       'EUR',
+            transaction_id: ordernummer,   // voorkomt dubbel tellen
+          });
+
+          // GA4-aankoopevent (doet pas iets zodra A3_GA4_ID is ingevuld)
+          gtag('event', 'purchase', {
+            transaction_id: ordernummer,
+            value:          orderWaarde,
+            currency:       'EUR',
+            items: ontwerpenPayload.map(o => ({
+              item_name: 'A3 poster' + (o.drukzijde === 'dubbel' ? ' (dubbelzijdig)' : ''),
+              quantity:  o.aantal,
+              price:     o.prijs_per_stuk,
+            })),
+          });
+        }
+      } catch (e) { console.warn('conversie-tracking fout:', e); }
 
       if (!grippData.gripp_offerte_id) {
         console.warn('[order] ' + ordernummer + ' opgeslagen in backend, maar Gripp-sync mislukte — handmatig syncen.');
