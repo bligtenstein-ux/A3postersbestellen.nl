@@ -1,11 +1,13 @@
 // netlify/functions/save-order.js
 // Slaat orders + drukbestand(en) op in de Neon database en stuurt een
-// order-notificatie per e-mail naar print@extern.nl via Resend.
+// order-notificatie per e-mail naar print@extern.nl via Resend, plus een
+// orderbevestiging naar de klant (klant-bevestiging.js).
 // Ondersteunt dubbelzijdig drukken (achterzijde-bestand) en het geval dat een
 // bestand te groot was om mee te sturen (bestand_te_groot → klant stuurt via WeTransfer).
 
 const { neon } = require('@neondatabase/serverless');
 const { Resend } = require('resend');
+const { stuurKlantBevestiging } = require('./klant-bevestiging');
 
 // ── Mail-instellingen ───────────────────────────────────────────────────────
 // Afzender moet een GEVERIFIEERD Resend-domein zijn. Op dit moment is alleen
@@ -202,6 +204,17 @@ exports.handler = async (event) => {
 
     // Insert geslaagd → order-notificatie versturen (faalt nooit de order).
     await stuurOrderMail({ ordernummer, klant, bestelling, gripp_offerte_id, bestandTeGroot: !!bestand_te_groot });
+
+    // Orderbevestiging naar de klant (faalt nooit de order; fout wordt gelogd).
+    if (process.env.RESEND_API_KEY) {
+      await stuurKlantBevestiging({
+        resend: new Resend(process.env.RESEND_API_KEY),
+        from: MAIL_FROM, ordernummer, klant, bestelling,
+        bestandTeGroot: !!bestand_te_groot,
+      });
+    } else {
+      console.warn('[save-order] RESEND_API_KEY ontbreekt — geen klantbevestiging verstuurd.');
+    }
 
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, ordernummer }) };
   } catch (err) {
