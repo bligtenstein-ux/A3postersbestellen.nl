@@ -7,7 +7,7 @@
 
 const { neon } = require('@neondatabase/serverless');
 const { Resend } = require('resend');
-const { stuurKlantBevestiging } = require('./klant-bevestiging');
+const { stuurKlantBevestiging, bouwInterneHtml, interneOnderwerp } = require('./klant-bevestiging');
 
 // ── Mail-instellingen ───────────────────────────────────────────────────────
 // Afzender moet een GEVERIFIEERD Resend-domein zijn. Op dit moment is alleen
@@ -139,7 +139,8 @@ async function stuurOrderMail({ ordernummer, klant, bestelling, gripp_offerte_id
       from: MAIL_FROM,
       to: MAIL_TO,
       replyTo: k.email || undefined,
-      subject: `Nieuwe order op A3postersbestellen.nl #${ordernummer}`,
+      subject: interneOnderwerp(ordernummer, gripp_offerte_id),
+      html: bouwInterneHtml({ ordernummer, klant: k, bestelling: b, gripp_offerte_id, bestandTeGroot }),
       text: tekst,
     });
     console.log(`[save-order] ✓ Order-mail verstuurd voor #${ordernummer}`);

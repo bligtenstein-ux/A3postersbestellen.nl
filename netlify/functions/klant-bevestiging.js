@@ -216,4 +216,101 @@ async function stuurKlantBevestiging({ resend, from, ordernummer, klant = {}, be
   }
 }
 
-module.exports = { stuurKlantBevestiging, bouwHtml, bouwTekst };
+// ── Interne melding naar print@extern.nl (zelfde opmaak) ────────────────────
+// Wordt door stuurOrderMail() in save-order.js als html-deel meegestuurd; de
+// bestaande platte tekst blijft het text-deel. Toont wat de printafdeling
+// nodig heeft: Gripp-status, bestanden, klantgegevens, prijzen excl. én incl.
+function interneOnderwerp(ordernummer, gripp_offerte_id) {
+  return `Er is een nieuwe bestelling geplaatst — #${ordernummer}`
+    + (gripp_offerte_id ? '' : ' (nog niet in Gripp)');
+}
+
+function bouwInterneHtml({ ordernummer, klant = {}, bestelling = {}, gripp_offerte_id, bestandTeGroot }) {
+  const regels = bestelRegels(bestelling);
+  const t = totalen(bestelling, regels);
+  const ontw = Array.isArray(bestelling.ontwerpen) ? bestelling.ontwerpen : [];
+  const afhalen = bestelling.verzendmethode === 'afhalen';
+  const td = 'padding:8px 0;border-bottom:1px solid #e5e7eb;vertical-align:top;';
+  const kop = (s) => `<h3 style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#6b7280;margin:26px 0 8px;">${s}</h3>`;
+
+  const grippBlok = gripp_offerte_id
+    ? `<div style="margin:0 0 12px;padding:12px 16px;background:#f0f9ef;border-radius:6px;">
+         Staat in Gripp als concept-offerte <strong>#${esc(gripp_offerte_id)}</strong>.</div>`
+    : `<div style="margin:0 0 12px;padding:12px 16px;border-left:4px solid #c2410c;background:#fff7ed;">
+         <strong>Nog niet in Gripp.</strong> De koppeling is mislukt; de order staat wel veilig in de admin.
+         Zet hem daar via de knop <em>Gripp</em> alsnog door.</div>`;
+
+  const weTransferBlok = bestandTeGroot
+    ? `<div style="margin:0 0 12px;padding:12px 16px;border-left:4px solid ${DONKER};background:#f1f5f9;">
+         <strong>Bestand volgt via WeTransfer.</strong> Het drukbestand was te groot voor directe upload;
+         de klant stuurt het naar ${REPLY_TO} o.v.v. #${esc(ordernummer)}.</div>`
+    : '';
+
+  const rijen = regels.map((r, i) => {
+    const achter = ontw[i]?.bestandsnaam_achter || (i === 0 && !ontw.length ? bestelling.bestandsnaam_achter : '');
+    const bestanden = [r.bestand, achter ? 'achter: ' + achter : ''].filter(Boolean).map(esc).join('<br>');
+    return `<tr>
+      <td style="${td}"><strong>${esc(r.titel)}</strong> — ${r.zijde}<br>
+        <span style="color:#6b7280;font-size:13px;">${bestanden || '(geen bestandsnaam)'}</span></td>
+      <td style="${td}text-align:right;white-space:nowrap;">${r.aantal} st.${Number.isFinite(r.prijsEx)
+        ? `<br><span style="color:#6b7280;font-size:13px;">${euro(r.prijsEx)} p/st excl.</span>` : ''}</td>
+    </tr>`;
+  }).join('');
+
+  const totaalRijen = t ? `
+    <tr><td style="padding:10px 0 0;">Verzendkosten</td>
+        <td style="padding:10px 0 0;text-align:right;">${afhalen ? 'Afhalen' : (t.ship > 0 ? euro(t.ship) + ' incl.' : 'Gratis')}</td></tr>
+    <tr><td style="padding:6px 0 0;">Totaal excl. btw</td>
+        <td style="padding:6px 0 0;text-align:right;">${euro(t.totaal / (1 + BTW))}</td></tr>
+    <tr><td style="padding:6px 0 0;"><strong>Totaal incl. btw</strong></td>
+        <td style="padding:6px 0 0;text-align:right;"><strong>${euro(t.totaal)}</strong></td></tr>` : '';
+
+  const klantRegels = [
+    klant.bedrijf ? `<strong>${esc(klant.bedrijf)}</strong>` : '',
+    esc(klant.naam),
+    klant.email ? `<a href="mailto:${esc(klant.email)}" style="color:${DONKER};">${esc(klant.email)}</a>` : '',
+    klant.telefoon ? `<a href="tel:${esc(String(klant.telefoon).replace(/\s/g, ''))}" style="color:${DONKER};">${esc(klant.telefoon)}</a>` : '',
+    klant.kvk ? `KvK ${esc(klant.kvk)}` : '',
+  ].filter(Boolean).join('<br>');
+  const factuur = adresRegels(klant.adres, '').map(esc).join('<br>');
+  const aflever = adresRegels(klant.afleveradres, klant.afleveradres?.bedrijf || klant.afleveradres?.naam || '').map(esc).join('<br>');
+
+  return `<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nieuwe bestelling ${esc(ordernummer)}</title></head>
+<body style="margin:0;padding:0;background:#f4f5f7;font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;color:#1f2937;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:24px 12px;">
+<tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:8px;overflow:hidden;">
+  <tr><td style="background:${MERKGROEN};padding:20px 28px;color:#ffffff;">
+    <div style="font-size:13px;opacity:.9;">a3postersbestellen.nl</div>
+    <div style="font-size:22px;font-weight:700;margin-top:4px;">Er is een nieuwe bestelling geplaatst</div>
+  </td></tr>
+  <tr><td style="padding:28px;font-size:15px;line-height:1.55;">
+    <div style="margin:0 0 16px;padding:14px 16px;background:#f9fafb;border-radius:6px;">
+      Ordernummer: <strong style="font-size:17px;">${esc(ordernummer)}</strong>
+    </div>
+    ${grippBlok}
+    ${weTransferBlok}
+    ${kop('Bestelling')}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+      ${rijen}
+      ${totaalRijen}
+    </table>
+    ${bestelling.opmerkingen ? `${kop('Opmerking klant')}<p style="margin:0;font-size:14px;">${esc(bestelling.opmerkingen)}</p>` : ''}
+    ${kop('Klant')}
+    <p style="margin:0;font-size:14px;">${klantRegels}</p>
+    ${kop(aflever ? 'Factuuradres' : (afhalen ? 'Adres (afhalen in Alkmaar)' : 'Adres en aflevering'))}
+    <p style="margin:0;font-size:14px;">${factuur || '(niet opgegeven)'}</p>
+    ${aflever ? `${kop('Afwijkend afleveradres')}<p style="margin:0;font-size:14px;">${aflever}</p>` : ''}
+    <p style="margin:28px 0 0;">
+      <a href="https://a3postersbestellen.nl/admin" style="display:inline-block;background:${MERKGROEN};color:#ffffff;text-decoration:none;font-weight:700;padding:11px 20px;border-radius:6px;">Open in de admin</a>
+    </p>
+    <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">Beantwoorden van deze mail gaat rechtstreeks naar de klant.</p>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+module.exports = { stuurKlantBevestiging, bouwHtml, bouwTekst, bouwInterneHtml, interneOnderwerp };
