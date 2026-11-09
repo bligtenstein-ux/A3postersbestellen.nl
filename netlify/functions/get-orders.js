@@ -11,6 +11,10 @@
 //     wordt ook een geldige sessie-token van een ingelogde gebruiker
 //     geaccepteerd (X-Session-Token header). Nodig voor de nieuwe
 //     gebruikersaccounts-functionaliteit.
+//   - 9 nov 2026: lijst bevat nu systeem_melding (reden bij ontbrekende
+//     bestanden / Gripp-fout) en ontwerpen[] ZONDER base64-data (alleen
+//     namen/aantallen + of het bestand aanwezig is). Daardoor tonen de
+//     admin-weergaven voor meerdere ontwerpen nu ook echt iets.
 
 const { neon } = require('@neondatabase/serverless');
 
@@ -35,6 +39,8 @@ async function getDb() {
   await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS bestand_naam_achter TEXT`;
   await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS bestand_data_achter TEXT`;
   await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS bestand_type_achter TEXT`;
+  await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS ontwerpen JSONB`;
+  await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS systeem_melding TEXT`;
 
   // Gebruikersaccounts + sessies voor het admin-login-systeem.
   await sql`
@@ -138,7 +144,18 @@ exports.handler = async (event) => {
     const orders = await sql`
       SELECT ordernummer, klant, bestelling, gripp_offerte_id,
              bestand_naam, bestand_type, bestand_naam_achter, bestand_type_achter,
-             status, aangemaakt
+             status, systeem_melding, aangemaakt,
+             CASE WHEN jsonb_typeof(ontwerpen) = 'array' THEN (
+               SELECT jsonb_agg(
+                        (o - 'bestand_data' - 'bestand_data_achter')
+                        || jsonb_build_object(
+                             'heeft_bestand',        (o->>'bestand_data') IS NOT NULL,
+                             'heeft_bestand_achter', (o->>'bestand_data_achter') IS NOT NULL)
+                        ORDER BY idx)
+               FROM jsonb_array_elements(ontwerpen) WITH ORDINALITY AS t(o, idx)
+             ) END AS ontwerpen,
+             (bestand_data IS NOT NULL) AS heeft_bestand,
+             (bestand_data_achter IS NOT NULL) AS heeft_bestand_achter
       FROM orders
       ORDER BY aangemaakt DESC
       LIMIT 200

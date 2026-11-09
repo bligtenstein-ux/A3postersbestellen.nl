@@ -3,7 +3,18 @@
 // order-notificatie per e-mail naar print@extern.nl via Resend, plus een
 // orderbevestiging naar de klant (klant-bevestiging.js).
 // Ondersteunt dubbelzijdig drukken (achterzijde-bestand) en het geval dat een
-// bestand te groot was om mee te sturen (bestand_te_groot → klant stuurt via WeTransfer).
+// bestand te groot was om mee te sturen (bestand_te_groot → klant stuurt per mail).
+//
+// 9 nov 2026 — status + reden:
+//   - Komt een order binnen zonder (alle) drukbestanden, dan krijgt hij status
+//     'wacht_op_bestanden' i.p.v. 'nieuw', en de klant krijgt in de bevestiging
+//     het verzoek de bestanden per mail te sturen.
+//   - Nieuwe kolom systeem_melding: leesbare reden waarom bestanden ontbreken
+//     en/of waarom Gripp niet lukte. Zichtbaar in de admin.
+//   - De frontend stuurt het eerste bestand niet meer dubbel (topniveau én in
+//     ontwerpen[0]) — dat verdubbelde de payload en liet orders vanaf ~2,2 MB
+//     stil mislukken (PS-97381). De losse bestand_*-kolommen vullen we daarom
+//     hier zelf uit ontwerpen[0] als ze leeg binnenkomen.
 
 const { neon } = require('@neondatabase/serverless');
 const { Resend } = require('resend');
@@ -41,13 +52,16 @@ async function getDb() {
   // bestand_data_achter/type_achter, bestand_te_groot). Backwards-compatible: bij
   // één ontwerp blijven de losse bestand_*-kolommen gevuld met dat ene bestand.
   await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS ontwerpen JSONB`;
+  // Leesbare reden bij afwijkingen (ontbrekende bestanden, Gripp-fout, mislukte
+  // eerste opslagpoging). Wordt in de admin getoond.
+  await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS systeem_melding TEXT`;
   return sql;
 }
 
 // ── Order-notificatie samenstellen en versturen ─────────────────────────────
 // Faalt de mail, dan mag dat de order NIET blokkeren: de order staat al veilig
 // in de database. We loggen de fout en gaan door.
-async function stuurOrderMail({ ordernummer, klant, bestelling, gripp_offerte_id, bestandTeGroot }) {
+async function stuurOrderMail({ ordernummer, klant, bestelling, gripp_offerte_id, bestandTeGroot, systeemMelding }) {
   if (!process.env.RESEND_API_KEY) {
     console.warn('[save-order] RESEND_API_KEY ontbreekt — geen order-mail verstuurd.');
     return;
@@ -124,8 +138,9 @@ async function stuurOrderMail({ ordernummer, klant, bestelling, gripp_offerte_id
     ``,
     `— Bestand —`,
     bestandTeGroot
-      ? `⚠️ Bestand was te groot voor directe upload. De klant stuurt het via WeTransfer naar ${MAIL_TO} o.v.v. #${ordernummer}.`
+      ? `WACHT OP BESTANDEN — niet meegekomen, klant is gevraagd ze per mail naar ${MAIL_TO} te sturen o.v.v. #${ordernummer}.`
       : `Bestand: ${b.bestandsnaam || '(zie admin)'}${b.bestandsnaam_achter ? ' + achterzijde: ' + b.bestandsnaam_achter : ''}`,
+    systeemMelding ? `\n— Systeemmelding —\n${systeemMelding}` : null,
     ``,
     gripp_offerte_id ? `Gripp offerte: ${gripp_offerte_id}` : `Gripp: (nog niet gesynct)`,
     ``,
@@ -139,8 +154,8 @@ async function stuurOrderMail({ ordernummer, klant, bestelling, gripp_offerte_id
       from: MAIL_FROM,
       to: MAIL_TO,
       replyTo: k.email || undefined,
-      subject: interneOnderwerp(ordernummer, gripp_offerte_id),
-      html: bouwInterneHtml({ ordernummer, klant: k, bestelling: b, gripp_offerte_id, bestandTeGroot }),
+      subject: interneOnderwerp(ordernummer, gripp_offerte_id, bestandTeGroot),
+      html: bouwInterneHtml({ ordernummer, klant: k, bestelling: b, gripp_offerte_id, bestandTeGroot, systeemMelding }),
       text: tekst,
     });
     console.log(`[save-order] ✓ Order-mail verstuurd voor #${ordernummer}`);
@@ -163,9 +178,51 @@ exports.handler = async (event) => {
     const { ordernummer, klant, bestelling, gripp_offerte_id,
             bestand_data, bestand_naam, bestand_type,
             bestand_data_achter, bestand_naam_achter, bestand_type_achter,
-            bestand_te_groot, ontwerpen } = body;
+            bestand_te_groot, ontwerpen, opslag_melding, gripp_fout } = body;
 
     if (!ordernummer) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ordernummer verplicht' }) };
+
+    // Losse bestand_*-kolommen (admin/downloads) vullen uit ontwerpen[0] als de
+    // frontend ze niet meer op topniveau meestuurt.
+    const o0 = Array.isArray(ontwerpen) && ontwerpen.length > 0 ? ontwerpen[0] : {};
+    const bData       = bestand_data        || o0.bestand_data        || null;
+    const bNaam       = bestand_naam        || o0.bestand_naam        || o0.bestandsnaam || null;
+    const bType       = bestand_type        || o0.bestand_type        || null;
+    const bDataAchter = bestand_data_achter || o0.bestand_data_achter || null;
+    const bNaamAchter = bestand_naam_achter || o0.bestand_naam_achter || o0.bestandsnaam_achter || null;
+    const bTypeAchter = bestand_type_achter || o0.bestand_type_achter || null;
+
+    // Welke bestanden ontbreken? Primair de lijst van de frontend; als die er
+    // niet is (oude/gecachte frontend) afleiden uit ontwerpen[] zelf.
+    let ontbrekend = Array.isArray(bestelling?.bestanden_ontbreken) ? bestelling.bestanden_ontbreken : null;
+    if (!ontbrekend) {
+      ontbrekend = [];
+      (Array.isArray(ontwerpen) && ontwerpen.length ? ontwerpen : [{
+        bestand_naam: bNaam, bestand_data: bData, bestand_naam_achter: bNaamAchter, bestand_data_achter: bDataAchter,
+      }]).forEach((o, i) => {
+        if ((o.bestand_naam || o.bestandsnaam) && !o.bestand_data)
+          ontbrekend.push({ ontwerp: i + 1, zijde: 'voor', naam: o.bestand_naam || o.bestandsnaam, reden: 'niet meegestuurd' });
+        if ((o.bestand_naam_achter || o.bestandsnaam_achter) && !o.bestand_data_achter)
+          ontbrekend.push({ ontwerp: i + 1, zijde: 'achter', naam: o.bestand_naam_achter || o.bestandsnaam_achter, reden: 'niet meegestuurd' });
+      });
+    }
+    const wachtOpBestanden = !!bestand_te_groot || ontbrekend.length > 0;
+    const status = wachtOpBestanden ? 'wacht_op_bestanden' : 'nieuw';
+
+    // Leesbare reden voor de admin.
+    const mb = n => Number(n) > 0 ? ` (${(n / 1024 / 1024).toFixed(1).replace('.', ',')} MB)` : '';
+    const meldingRegels = [];
+    if (ontbrekend.length) {
+      meldingRegels.push('Bestanden niet ontvangen — klant gevraagd ze per mail te sturen:');
+      ontbrekend.forEach(f => meldingRegels.push(
+        `• Ontwerp ${f.ontwerp || 1}${f.zijde === 'achter' ? ' achterzijde' : ''}: ${f.naam || '?'}${mb(f.grootte)} — ${f.reden || 'te groot'}`));
+    } else if (bestand_te_groot) {
+      meldingRegels.push('Bestand(en) te groot voor directe upload — klant gevraagd ze per mail te sturen.');
+    }
+    if (opslag_melding) meldingRegels.push(String(opslag_melding));
+    if (!gripp_offerte_id && gripp_fout) meldingRegels.push(`Gripp: ${gripp_fout}`);
+    const systeemMelding = meldingRegels.join('\n') || null;
+    if (systeemMelding) console.warn(`[save-order] ${ordernummer} — ${systeemMelding.replace(/\n/g, ' | ')}`);
 
     const sql = await getDb();
 
@@ -177,20 +234,21 @@ exports.handler = async (event) => {
       INSERT INTO orders (ordernummer, klant, bestelling, gripp_offerte_id,
                           bestand_naam, bestand_data, bestand_type,
                           bestand_naam_achter, bestand_data_achter, bestand_type_achter,
-                          ontwerpen, status)
+                          ontwerpen, status, systeem_melding)
       VALUES (
         ${ordernummer},
         ${JSON.stringify(klant)},
         ${JSON.stringify(bestelling)},
         ${gripp_offerte_id || null},
-        ${bestand_naam || null},
-        ${bestand_data || null},
-        ${bestand_type || null},
-        ${bestand_naam_achter || null},
-        ${bestand_data_achter || null},
-        ${bestand_type_achter || null},
+        ${bNaam},
+        ${bData},
+        ${bType},
+        ${bNaamAchter},
+        ${bDataAchter},
+        ${bTypeAchter},
         ${Array.isArray(ontwerpen) && ontwerpen.length > 0 ? JSON.stringify(ontwerpen) : null},
-        'nieuw'
+        ${status},
+        ${systeemMelding}
       )
       ON CONFLICT (ordernummer) DO NOTHING
       RETURNING ordernummer
@@ -204,20 +262,20 @@ exports.handler = async (event) => {
     }
 
     // Insert geslaagd → order-notificatie versturen (faalt nooit de order).
-    await stuurOrderMail({ ordernummer, klant, bestelling, gripp_offerte_id, bestandTeGroot: !!bestand_te_groot });
+    await stuurOrderMail({ ordernummer, klant, bestelling, gripp_offerte_id, bestandTeGroot: wachtOpBestanden, systeemMelding });
 
     // Orderbevestiging naar de klant (faalt nooit de order; fout wordt gelogd).
     if (process.env.RESEND_API_KEY) {
       await stuurKlantBevestiging({
         resend: new Resend(process.env.RESEND_API_KEY),
         from: MAIL_FROM, ordernummer, klant, bestelling,
-        bestandTeGroot: !!bestand_te_groot,
+        bestandTeGroot: wachtOpBestanden,
       });
     } else {
       console.warn('[save-order] RESEND_API_KEY ontbreekt — geen klantbevestiging verstuurd.');
     }
 
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, ordernummer }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, ordernummer, status }) };
   } catch (err) {
     console.error('save-order fout:', err);
     return { statusCode: 500, headers, body: JSON.stringify({ success: false, error: err.message }) };

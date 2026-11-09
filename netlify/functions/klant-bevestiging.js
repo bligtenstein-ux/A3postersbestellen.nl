@@ -12,6 +12,8 @@
 //     resend, from: MAIL_FROM, ordernummer, klant, bestelling,
 //     bestandTeGroot,
 //   });
+// Ontbrekende bestanden komen uit bestelling.bestanden_ontbreken en worden in
+// de klantmail met naam + grootte genoemd, met het verzoek ze per mail te sturen.
 //
 // Prijzen: de frontend stuurt prijs_per_stuk en verzendkosten EXCL. btw
 // (zie updatePrice() in index.html). Totaal incl. btw wordt hier op exact
@@ -71,6 +73,18 @@ function bestelRegels(bestelling = {}) {
   }];
 }
 
+// Bestanden die NIET met de order zijn meegekomen (te groot of upload mislukt).
+// De frontend zet deze lijst in bestelling.bestanden_ontbreken:
+//   [{ ontwerp, zijde: 'voor'|'achter', naam, grootte (bytes), reden }]
+function ontbrekendeBestanden(bestelling = {}) {
+  return Array.isArray(bestelling.bestanden_ontbreken) ? bestelling.bestanden_ontbreken : [];
+}
+function bestandLabel(b, metOntwerp) {
+  const mb = Number(b.grootte) > 0 ? ` (${(b.grootte / 1024 / 1024).toFixed(1).replace('.', ',')} MB)` : '';
+  const pre = metOntwerp && b.ontwerp ? `Ontwerp ${b.ontwerp}${b.zijde === 'achter' ? ', achterzijde' : ''}: ` : (b.zijde === 'achter' ? 'Achterzijde: ' : '');
+  return `${pre}${b.naam || 'bestand'}${mb}`;
+}
+
 // Totalen incl. btw, of null als een prijs ontbreekt (dan tonen we geen bedrag:
 // liever geen bedrag dan een verkeerd bedrag).
 function totalen(bestelling, regels) {
@@ -86,6 +100,8 @@ function totalen(bestelling, regels) {
 
 function bouwHtml({ ordernummer, klant, bestelling, bestandTeGroot }) {
   const regels = bestelRegels(bestelling);
+  const ontbrekend = ontbrekendeBestanden(bestelling);
+  const meerdereOntwerpen = regels.length > 1;
   const t = totalen(bestelling, regels);
   const totaalAantal = regels.reduce((s, r) => s + (r.aantal || 0), 0);
   const aanhef = klant.naam ? `Beste ${esc(klant.naam)},` : 'Beste klant,';
@@ -114,12 +130,20 @@ function bouwHtml({ ordernummer, klant, bestelling, bestandTeGroot }) {
     : `<tr><td style="padding:12px 0 0;"><strong>Totaal</strong></td>
          <td style="padding:12px 0 0;text-align:right;"><strong>${totaalAantal} posters</strong></td></tr>`;
 
-  const weTransferBlok = bestandTeGroot ? `
+  const lijstHtml = ontbrekend.length
+    ? `<ul style="margin:8px 0 8px 18px;padding:0;">${ontbrekend.map(b => `<li>${esc(bestandLabel(b, meerdereOntwerpen))}</li>`).join('')}</ul>`
+    : '';
+  const weTransferBlok = (bestandTeGroot || ontbrekend.length) ? `
     <div style="margin:24px 0;padding:16px;border-left:4px solid ${DONKER};background:#f1f5f9;">
-      <strong>Actie nodig: stuur je drukbestand na</strong><br>
-      Je bestand was te groot om direct mee te sturen. Stuur het via WeTransfer naar
-      <a href="mailto:${REPLY_TO}" style="color:${DONKER};">${REPLY_TO}</a> en vermeld
-      ordernummer <strong>${esc(ordernummer)}</strong>. We starten met drukken zodra we het bestand hebben.
+      <strong>Actie nodig: stuur je drukbestand${ontbrekend.length > 1 ? 'en' : ''} per mail</strong><br>
+      ${ontbrekend.length > 1 ? 'Deze bestanden konden' : 'Je bestand kon'} niet direct met je bestelling worden meegestuurd
+      (meestal omdat ${ontbrekend.length > 1 ? 'ze' : 'het'} te groot ${ontbrekend.length > 1 ? 'zijn' : 'is'} voor de website):
+      ${lijstHtml}
+      Stuur ${ontbrekend.length > 1 ? 'ze' : 'het'} als bijlage naar
+      <a href="mailto:${REPLY_TO}?subject=${encodeURIComponent('Drukbestanden order ' + ordernummer)}" style="color:${DONKER};">${REPLY_TO}</a>
+      en vermeld ordernummer <strong>${esc(ordernummer)}</strong>. Je kunt ook gewoon op deze mail antwoorden.
+      Te groot voor een mailbijlage? Gebruik dan WeTransfer naar hetzelfde adres.
+      We starten met drukken zodra we ${ontbrekend.length > 1 ? 'de bestanden' : 'het bestand'} hebben.
     </div>` : '';
 
   return `<!doctype html>
@@ -179,7 +203,15 @@ function bouwTekst({ ordernummer, klant, bestelling, bestandTeGroot }) {
     t ? `Verzendkosten: ${t.ship > 0 ? euro(t.ship) : 'Gratis'}` : '',
     t ? `Totaal incl. btw: ${euro(t.totaal)}` : '',
     '',
-    bestandTeGroot ? `Let op: stuur je drukbestand via WeTransfer naar ${REPLY_TO} o.v.v. ordernummer ${ordernummer}.\n` : '',
+    (bestandTeGroot || ontbrekendeBestanden(bestelling).length)
+      ? [
+          'ACTIE NODIG: deze drukbestanden konden niet direct met je bestelling worden meegestuurd:',
+          ...ontbrekendeBestanden(bestelling).map(b => '- ' + bestandLabel(b, bestelRegels(bestelling).length > 1)),
+          `Stuur ze als bijlage per mail naar ${REPLY_TO} (of antwoord op deze mail) o.v.v. ordernummer ${ordernummer}.`,
+          'Te groot voor een mailbijlage? Gebruik dan WeTransfer naar hetzelfde adres.',
+          '',
+        ].join('\n')
+      : '',
     `Vragen? Beantwoord deze mail of bel ${TELEFOON}. Vermeld je ordernummer.`,
     '',
     'Met vriendelijke groet,',
@@ -200,7 +232,9 @@ async function stuurKlantBevestiging({ resend, from, ordernummer, klant = {}, be
       from: from.includes('<') ? from.replace(/^[^<]*</, 'Buro Extern | A3 posters <') : `Buro Extern | A3 posters <${from}>`,
       to: [to],
       replyTo: REPLY_TO,
-      subject: `Orderbevestiging ${ordernummer} — a3postersbestellen.nl`,
+      subject: (bestandTeGroot || ontbrekendeBestanden(bestelling).length)
+        ? `Orderbevestiging ${ordernummer} — stuur je drukbestand(en) per mail`
+        : `Orderbevestiging ${ordernummer} — a3postersbestellen.nl`,
       html: bouwHtml(data),
       text: bouwTekst(data),
     });
@@ -220,12 +254,18 @@ async function stuurKlantBevestiging({ resend, from, ordernummer, klant = {}, be
 // Wordt door stuurOrderMail() in save-order.js als html-deel meegestuurd; de
 // bestaande platte tekst blijft het text-deel. Toont wat de printafdeling
 // nodig heeft: Gripp-status, bestanden, klantgegevens, prijzen excl. én incl.
-function interneOnderwerp(ordernummer, gripp_offerte_id) {
+function interneOnderwerp(ordernummer, gripp_offerte_id, wachtOpBestanden = false) {
+  const extra = [
+    wachtOpBestanden ? 'wacht op bestanden' : '',
+    gripp_offerte_id ? '' : 'nog niet in Gripp',
+  ].filter(Boolean);
   return `Er is een nieuwe bestelling geplaatst — #${ordernummer}`
-    + (gripp_offerte_id ? '' : ' (nog niet in Gripp)');
+    + (extra.length ? ` (${extra.join(', ')})` : '');
 }
 
-function bouwInterneHtml({ ordernummer, klant = {}, bestelling = {}, gripp_offerte_id, bestandTeGroot }) {
+function bouwInterneHtml({ ordernummer, klant = {}, bestelling = {}, gripp_offerte_id, bestandTeGroot,
+                           systeemMelding = '' }) {
+  const ontbrekend = ontbrekendeBestanden(bestelling);
   const regels = bestelRegels(bestelling);
   const t = totalen(bestelling, regels);
   const ontw = Array.isArray(bestelling.ontwerpen) ? bestelling.ontwerpen : [];
@@ -240,11 +280,17 @@ function bouwInterneHtml({ ordernummer, klant = {}, bestelling = {}, gripp_offer
          <strong>Nog niet in Gripp.</strong> De koppeling is mislukt; de order staat wel veilig in de admin.
          Zet hem daar via de knop <em>Gripp</em> alsnog door.</div>`;
 
-  const weTransferBlok = bestandTeGroot
+  const weTransferBlok = (bestandTeGroot || ontbrekend.length)
     ? `<div style="margin:0 0 12px;padding:12px 16px;border-left:4px solid ${DONKER};background:#f1f5f9;">
-         <strong>Bestand volgt via WeTransfer.</strong> Het drukbestand was te groot voor directe upload;
-         de klant stuurt het naar ${REPLY_TO} o.v.v. #${esc(ordernummer)}.</div>`
-    : '';
+         <strong>Wacht op bestanden.</strong> Niet met de order meegekomen — de klant heeft per mail
+         het verzoek gekregen ze naar ${REPLY_TO} te sturen o.v.v. #${esc(ordernummer)}:
+         ${ontbrekend.length ? `<ul style="margin:6px 0 0 18px;padding:0;">${ontbrekend.map(b =>
+           `<li>${esc(bestandLabel(b, true))}${b.reden ? ` <span style="color:#6b7280;">— ${esc(b.reden)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+         ${systeemMelding ? `<div style="margin-top:8px;font-size:13px;color:#6b7280;">${esc(systeemMelding).replace(/\n/g, '<br>')}</div>` : ''}
+       </div>`
+    : (systeemMelding
+      ? `<div style="margin:0 0 12px;padding:12px 16px;border-left:4px solid #c2410c;background:#fff7ed;font-size:13px;">${esc(systeemMelding).replace(/\n/g, '<br>')}</div>`
+      : '');
 
   const rijen = regels.map((r, i) => {
     const achter = ontw[i]?.bestandsnaam_achter || (i === 0 && !ontw.length ? bestelling.bestandsnaam_achter : '');

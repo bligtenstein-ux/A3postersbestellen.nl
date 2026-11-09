@@ -527,6 +527,15 @@ function bouwOfferteBeschrijving({ aantal, prijsPerStuk, methode, bestelling,
     bestelling.bestandsnaam ? `Bestand: ${bestelling.bestandsnaam}` : '',
   );
 
+  // Bestanden die niet met de order zijn meegekomen (te groot) — klant stuurt
+  // ze per mail na. Zo ziet wie de offerte opent meteen dat er iets ontbreekt.
+  const ontbrekend = Array.isArray(bestelling.bestanden_ontbreken) ? bestelling.bestanden_ontbreken : [];
+  if (ontbrekend.length) {
+    regels.push('', '── WACHT OP BESTANDEN (klant stuurt per mail) ──');
+    ontbrekend.forEach(f => regels.push(
+      `Ontwerp ${f.ontwerp || 1}${f.zijde === 'achter' ? ' achterzijde' : ''}: ${f.naam || '?'}`));
+  }
+
   return regels
     .filter(r => r !== false && r !== null && r !== undefined)
     .join('\n')
