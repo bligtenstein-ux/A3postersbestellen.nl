@@ -824,6 +824,48 @@
     padding: 4px 8px; border-radius: 6px;
   }
   .ontwerp-remove:hover { background: #fee2e2; color: #dc2626; }
+  .ontwerp-qty {
+    flex: 0 0 auto;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .ontwerp-qty-btn {
+    width: 26px; height: 26px;
+    border: 1px solid var(--line); background: #fff;
+    border-radius: 6px; cursor: pointer;
+    font-size: 15px; line-height: 1; color: var(--ink-mid);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ontwerp-qty-btn:hover { border-color: var(--green); color: var(--green); }
+  .ontwerp-qty-input {
+    width: 46px; height: 26px; text-align: center;
+    border: 1px solid var(--line); border-radius: 6px;
+    font-family: var(--font); font-size: 13px; color: var(--ink);
+    -moz-appearance: textfield;
+  }
+  .ontwerp-qty-input::-webkit-outer-spin-button,
+  .ontwerp-qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .huidig-aantal-blok {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: var(--green-light);
+    border: 1px solid var(--green);
+    border-radius: var(--radius-sm);
+  }
+  .huidig-aantal-blok.visible { display: flex; }
+  .huidig-aantal-label { font-size: 13px; font-weight: 600; color: var(--green-dark); }
+  .achter-preview { display: none; margin-top: 12px; }
+  .achter-preview.visible { display: block; }
+  .ontwerp-thumbs { display: flex; gap: 3px; flex: 0 0 auto; }
+  .ontwerp-thumb-achter { opacity: 0.92; border-style: dashed; }
+  .ontwerp-badge-dubbel {
+    display: inline-block;
+    background: var(--green-light); color: var(--green-dark);
+    font-size: 11px; font-weight: 700;
+    padding: 1px 7px; border-radius: 999px;
+  }
   .ontwerpen-hint { font-size: 12px; color: var(--ink-mid); margin-top: 8px; }
 
 
@@ -1542,6 +1584,7 @@
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -1847,6 +1890,17 @@
 
       </div>
 
+      <!-- Aantal voor het ontwerp dat nu in de editor staat -->
+      <div class="huidig-aantal-blok" id="huidigAantalBlok">
+        <span class="huidig-aantal-label">Aantal van dit ontwerp:</span>
+        <div class="ontwerp-qty">
+          <button type="button" class="ontwerp-qty-btn" onclick="changeQty(-1)" title="Minder">&minus;</button>
+          <input type="number" class="ontwerp-qty-input" id="huidigAantalInput" min="1" max="9999" value="1"
+                 onchange="onQtyInput(this.value)" aria-label="Aantal van dit ontwerp">
+          <button type="button" class="ontwerp-qty-btn" onclick="changeQty(1)" title="Meer">+</button>
+        </div>
+      </div>
+
       <!-- ACHTERZIJDE (alleen zichtbaar bij dubbelzijdig) -->
       <div class="achterzijde-section" id="achterzijdeSection">
         <div class="sectie-header" style="margin-top:1.25rem">
@@ -1859,12 +1913,39 @@
         <div class="editor-drop-zone" id="achterUploadZone">
           <input type="file" id="fileInputAchter" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp" onchange="handleFileAchter(this.files[0])">
           <div class="editor-drop-title">Sleep de achterzijde hierheen of klik om te uploaden</div>
-          <div class="editor-drop-sub">PDF, PNG of JPG — tot 4 MB direct, groter kan via WeTransfer</div>
+          <div class="editor-drop-sub">PDF, PNG of JPG — tot 4 MB direct, groter kan per mail</div>
         </div>
         <div class="achter-file-strip" id="achterFileStrip">
           <span class="achter-check">&#10003;</span>
           <span class="achter-filename" id="achterFilename">bestand.pdf</span>
           <button class="preview-remove" onclick="removeFileAchter()" title="Verwijder achterzijde">&times;</button>
+        </div>
+
+        <!-- Achterzijde preview (canvas op A3 + DPI-meter, zonder bewerk-knoppen) -->
+        <div class="achter-preview" id="achterPreview">
+          <div class="canvas-container" id="achterCanvasContainer">
+            <canvas id="achterCanvas"></canvas>
+            <div class="canvas-placeholder" id="achterCanvasPlaceholder">Achterzijde laden...</div>
+            <div class="pdf-loading" id="achterPdfLoading" style="display:none">
+              <div class="pdf-spinner"></div>
+              <span>PDF wordt geladen...</span>
+            </div>
+          </div>
+          <div class="dpi-panel">
+            <div class="dpi-header">
+              <div class="dpi-label">Afdrukkwaliteit achterzijde</div>
+              <div class="dpi-value" id="achterDpiValue">— dpi</div>
+            </div>
+            <div class="dpi-dots" id="achterDpiDots">
+              <div class="dpi-dot" id="achterDot1"></div>
+              <div class="dpi-dot" id="achterDot2"></div>
+              <div class="dpi-dot" id="achterDot3"></div>
+              <div class="dpi-dot" id="achterDot4"></div>
+              <div class="dpi-dot" id="achterDot5"></div>
+            </div>
+            <div class="dpi-text" id="achterDpiText">Bestand wordt geanalyseerd...</div>
+            <div class="dpi-sub" id="achterDpiSub"></div>
+          </div>
         </div>
       </div>
 
@@ -2178,10 +2259,10 @@
     if (!file) return;
     if (file.size > MAX_UPLOAD_BYTES) {
       // Niet blokkeren — zie handleFile. Bestand mag mee als state, maar wordt
-      // niet geüpload; klant stuurt het via WeTransfer na.
+      // niet geüpload; klant stuurt het per mail na.
       alert('Let op: je achterzijde-bestand is ' + (file.size/1024/1024).toFixed(1) + ' MB, groter dan ' + MAX_UPLOAD_MB + ' MB.\n\n' +
             'Je kunt gewoon bestellen — maar dit bestand wordt niet direct meegestuurd. ' +
-            'Na het plaatsen van je order vragen we je het via WeTransfer naar ' +
+            'Na het plaatsen van je order vragen we je het per mail naar ' +
             'print@extern.nl te sturen onder vermelding van je ordernummer.');
       // Bewust GEEN return.
     }
@@ -2192,18 +2273,105 @@
     if (fn) fn.textContent = file.name + ' — ' + (file.size/1024/1024).toFixed(1) + ' MB';
     const strip = $('achterFileStrip');
     if (strip) strip.classList.add('visible');
+    renderAchterPreview(file);
     updateButton();
+    updatePrice();
+  }
+
+  // ── Achterzijde-preview (los van de voorzijde-editor; geen bewerk-knoppen) ──
+  // Tekent de geüploade achterzijde op een eigen A3-canvas en vult een eigen
+  // DPI-meter. Gebruikt dezelfde reken-helper (calcDpi) als de voorzijde, maar
+  // raakt de globale voorzijde-state (imgEl/pdfDoc/rotation) NIET aan.
+  function updateAchterDpiMeter(dpi) {
+    const level = DPI_LEVELS.find(l => dpi >= l.min && dpi < l.max) || DPI_LEVELS[DPI_LEVELS.length-1];
+    const v = $('achterDpiValue'); if (v) v.textContent = dpi + ' dpi';
+    for (let i=1;i<=5;i++){
+      const dot = $('achterDot'+i); if(!dot) continue;
+      dot.className = 'dpi-dot';
+      if (i <= level.dots) dot.classList.add('filled', level.cls);
+    }
+    const txt = $('achterDpiText');
+    if (txt) { txt.className = 'dpi-text ' + level.cls; txt.textContent = level.label; }
+    const sub = $('achterDpiSub'); if (sub) sub.textContent = level.sub;
+  }
+
+  function drawAchterCanvas(img) {
+    const canvas = $('achterCanvas');
+    const container = $('achterCanvasContainer');
+    if (!canvas || !container) return;
+    const cw = container.clientWidth || 600;
+    const ch = container.clientHeight || 848;
+    canvas.width = cw; canvas.height = ch;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, cw, ch);
+    const scale = Math.min(cw/img.naturalWidth, ch/img.naturalHeight);
+    const dw = img.naturalWidth*scale, dh = img.naturalHeight*scale;
+    ctx.drawImage(img, (cw-dw)/2, (ch-dh)/2, dw, dh);
+    const ph = $('achterCanvasPlaceholder'); if (ph) ph.style.display = 'none';
+  }
+
+  async function renderAchterPreview(file) {
+    const preview = $('achterPreview');
+    if (preview) preview.classList.add('visible');
+    const ph = $('achterCanvasPlaceholder');
+    if (ph) { ph.style.display = 'flex'; ph.textContent = 'Achterzijde laden...'; }
+    const av = $('achterDpiValue'); if (av) av.textContent = '— dpi';
+    for (let i=1;i<=5;i++){ const d=$('achterDot'+i); if(d) d.className='dpi-dot'; }
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (isPdf) {
+      const loading = $('achterPdfLoading'); if (loading) loading.style.display = 'flex';
+      try {
+        if (typeof pdfjsLib !== 'undefined') {
+          pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+        const arrayBuffer = await file.arrayBuffer();
+        const doc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+        const page = await doc.getPage(1);
+        const scale = 3.0; // hoge resolutie voor DPI-check
+        const viewport = page.getViewport({scale});
+        const off = document.createElement('canvas');
+        off.width = viewport.width; off.height = viewport.height;
+        await page.render({canvasContext: off.getContext('2d'), viewport}).promise;
+        const img = new Image();
+        img.onload = () => {
+          drawAchterCanvas(img);
+          updateAchterDpiMeter(calcDpi(img.naturalWidth, img.naturalHeight));
+        };
+        img.src = off.toDataURL('image/png');
+      } catch (e) {
+        if (ph) { ph.style.display = 'flex'; ph.textContent = 'Kon PDF niet weergeven'; }
+      } finally {
+        if (loading) loading.style.display = 'none';
+      }
+    } else {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          drawAchterCanvas(img);
+          updateAchterDpiMeter(calcDpi(img.naturalWidth, img.naturalHeight));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
   function removeFileAchter() {
     state.fileAchter = null;
     const strip = $('achterFileStrip');
     if (strip) strip.classList.remove('visible');
+    const preview = $('achterPreview');
+    if (preview) preview.classList.remove('visible');
     const zone = $('achterUploadZone');
     if (zone) zone.style.display = '';
     const inp = $('fileInputAchter');
     if (inp) inp.value = '';
     updateButton();
+    updatePrice();
   }
 
   function getTierIdx(qty) {
@@ -2224,6 +2392,8 @@
   function syncDirectInput() {
     const el = $('qtyDirect');
     if(el) el.value = state.qty;
+    const h = $('huidigAantalInput');
+    if(h && document.activeElement !== h) h.value = state.qty;
   }
   function syncQtyFromDirect(v) {
     state.qty = Math.max(1, Math.min(9999, parseInt(v)||1));
@@ -2287,6 +2457,35 @@
     $('breakdownShip').textContent=ship===0?'Gratis':fmt(shipInclBtw);
     // BTW-label blijft statisch
     $('breakdownTotal').textContent=fmt(total);
+
+    // Huidig-aantal-blok (onder de editor) tonen zodra er een bestand in de
+    // editor staat. Dit is de teller voor het ontwerp waar de klant nu mee bezig is.
+    const huidigBlok = $('huidigAantalBlok');
+    if (huidigBlok) huidigBlok.classList.toggle('visible', !!state.file);
+    const huidigInput = $('huidigAantalInput');
+    if (huidigInput && document.activeElement !== huidigInput) huidigInput.value = state.qty;
+
+    // Aantal ontwerpen "in het spel" = lijst + (huidig editor-ontwerp als er een bestand is).
+    const aantalOntwerpen = ontwerpen.length + (state.file ? 1 : 0);
+
+    // Grote teller in het overzicht: zodra er méér dan één ontwerp is, wordt die
+    // een read-only TOTAAL-weergave (aantallen regel je dan per ontwerp — in de
+    // editor-teller en in de lijst). Bij precies één ontwerp werkt de grote teller
+    // zoals vanouds (bewerkt state.qty rechtstreeks).
+    const multiModus = aantalOntwerpen > 1;
+    const qtyInputEl = $('qtyInput');
+    const qtyRow = qtyInputEl ? qtyInputEl.closest('.qty-row') : null;
+    if (qtyInputEl) {
+      if (multiModus) {
+        qtyInputEl.value = totaal;
+        qtyInputEl.readOnly = true;
+        if (qtyRow) qtyRow.querySelectorAll('.qty-btn').forEach(b => { b.disabled = true; b.style.opacity = '0.4'; b.style.cursor = 'not-allowed'; });
+      } else {
+        qtyInputEl.value = state.qty;
+        qtyInputEl.readOnly = false;
+        if (qtyRow) qtyRow.querySelectorAll('.qty-btn').forEach(b => { b.disabled = false; b.style.opacity = ''; b.style.cursor = ''; });
+      }
+    }
 
     // "Bestel X meer"-hint o.b.v. het totaal, incl. BTW.
     const tierIdx = getTierIdx(refTotaal);
@@ -2364,7 +2563,7 @@
     $('dpiSub').textContent = level.sub;
   }
 
-  function drawCanvas() {
+  function drawCanvas(alGeroteerd = false) {
     if(!imgEl) return;
     const canvas = $('previewCanvas');
     const container = $('canvasContainer');
@@ -2375,7 +2574,10 @@
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, cw, ch);
 
-    const rotated = rotation === 90 || rotation === 270;
+    // Bij een PDF-preview is de rotatie al in imgEl gebakken (via getViewport),
+    // dus dan NIET nog eens roteren — anders wordt de rotatie dubbel toegepast.
+    const effRot = alGeroteerd ? 0 : rotation;
+    const rotated = effRot === 90 || effRot === 270;
     const srcW = rotated ? imgEl.naturalHeight : imgEl.naturalWidth;
     const srcH = rotated ? imgEl.naturalWidth  : imgEl.naturalHeight;
     const scale = Math.min(cw/srcW, ch/srcH);
@@ -2384,7 +2586,7 @@
 
     ctx.save();
     ctx.translate(dx+dw/2, dy+dh/2);
-    ctx.rotate(rotation*Math.PI/180);
+    ctx.rotate(effRot*Math.PI/180);
     ctx.drawImage(imgEl, -imgEl.naturalWidth/2*scale, -imgEl.naturalHeight/2*scale,
                   imgEl.naturalWidth*scale, imgEl.naturalHeight*scale);
     ctx.restore();
@@ -2396,10 +2598,15 @@
     resetFitState();
 
     if(pdfDoc) {
-      // PDF-preview updaten met nieuwe rotatie. Het originele PDF-bestand
-      // blijft ongewijzigd — de rotatie-instructie gaat als metadata mee
-      // naar de drukker.
+      // PDF-preview updaten met nieuwe rotatie...
       renderPdfPage(pdfPage);
+      // ...én het uitvoerbestand daadwerkelijk roteren (vectorgetrouw via pdf-lib),
+      // zodat de gedraaide stand ook echt in de bestelde PDF zit. Faalt pdf-lib,
+      // dan blijft het origineel staan (beter dan een corrupt bestand).
+      verwerkPdf('rotate', rotation).then(ok => {
+        if (!ok) console.warn('[pdf] rotatie niet in bestand toegepast — origineel behouden');
+        updateButton();
+      });
       return;
     }
 
@@ -2454,7 +2661,106 @@
     });
   }
 
+  // ── PDF-verwerking met pdf-lib (behoudt vectorkwaliteit) ────────────────────
+  // Voor PDF's doen we rotatie en "Passend/Vullend op A3" NIET via een raster-
+  // canvas (dat zou de PDF naar JPG verlagen), maar door de originele PDF-pagina
+  // vectorgetrouw op een nieuwe A3-pagina (met 3mm afloop) te embedden.
+  // origPdfBytes bewaart de ONGEWIJZIGDE bytes van de geüploade PDF, zodat elke
+  // bewerking van het origineel uitgaat (geen dubbele afloop of kwaliteitsverlies).
+  let origPdfBytes = null;
+
+  // Genereert een A3-PDF (mode: 'contain' | 'cover' | 'rotate') uit de originele
+  // PDF-pagina, met de opgegeven rotatie. Zet het resultaat als state.file.
+  async function verwerkPdf(mode, rotatieGraden) {
+    if (!origPdfBytes || typeof PDFLib === 'undefined') return false;
+    try {
+      const { PDFDocument, degrees } = PDFLib;
+
+      // A3 met 3mm afloop = 303 x 426 mm. PDF-punten: 1 mm = 2.83465 pt.
+      const MM = 2.83465;
+      const A3W = 303 * MM;   // 858.9 pt
+      const A3H = 426 * MM;   // 1207.6 pt
+      const MARGE = 3 * MM;   // 3mm binnenmarge voor "passend"
+
+      const src = await PDFDocument.load(origPdfBytes);
+      const out = await PDFDocument.create();
+      const [embedded] = await out.embedPdf(src, [0]);
+
+      // Afmetingen van de bronpagina, rekening houdend met rotatie.
+      const rot = ((rotatieGraden % 360) + 360) % 360;
+      const draai = rot === 90 || rot === 270;
+      const ew = embedded.width, eh = embedded.height;
+      const effW = draai ? eh : ew;   // effectieve breedte na rotatie
+      const effH = draai ? ew : eh;
+
+      // Schaal bepalen.
+      let doelW, doelH;
+      if (mode === 'cover') {
+        doelW = A3W; doelH = A3H; // vullend: heel afloopvlak
+      } else {
+        doelW = A3W - 2 * MARGE; doelH = A3H - 2 * MARGE; // passend: binnen marge
+      }
+      const schaal = mode === 'cover'
+        ? Math.max(doelW / effW, doelH / effH)
+        : Math.min(doelW / effW, doelH / effH);
+
+      const page = out.addPage([A3W, A3H]);
+
+      // Positionering: we plaatsen het (mogelijk geroteerde) embed gecentreerd.
+      // pdf-lib roteert om de linkeronderhoek, dus we corrigeren de offset per hoek.
+      const sw = ew * schaal, sh = eh * schaal; // geschaalde ONGEROTEERDE maten
+      const cx = A3W / 2, cy = A3H / 2;
+      // LET OP richting: `rotation` in de editor is MET de klok mee (zo draaien
+      // pdf.js-preview en canvas). pdf-lib's degrees() draait TEGEN de klok in.
+      // Daarom omrekenen, anders krijgt de klant bij 90°/270° precies de
+      // andere kant op gedraaid dan de preview toont (bug t/m 9 nov).
+      const prot = (360 - rot) % 360;
+      let x, y;
+      if (prot === 0)        { x = cx - sw/2;  y = cy - sh/2; }
+      else if (prot === 90)  { x = cx + sh/2;  y = cy - sw/2; }
+      else if (prot === 180) { x = cx + sw/2;  y = cy + sh/2; }
+      else                   { x = cx - sh/2;  y = cy + sw/2; } // 270
+
+      page.drawPage(embedded, { x, y, xScale: schaal, yScale: schaal, rotate: degrees(prot) });
+
+      const bytes = await out.save();
+      const naam = (state.file ? state.file.name.replace(/\.[^.]+$/, '') : 'ontwerp')
+        + (mode === 'cover' ? '_a3vullend' : mode === 'contain' ? '_a3passend' : '_gedraaid') + '.pdf';
+      state.file = new File([bytes], naam, { type: 'application/pdf' });
+      setFilenameLabel(state.file);
+      return true;
+    } catch (e) {
+      console.error('[pdf] verwerking mislukt:', e);
+      return false;
+    }
+  }
+
   function maakPassend(mode = 'contain') {
+    // PDF's: vectorgetrouw op A3 plaatsen via pdf-lib (blijft een PDF, geen JPG).
+    if (pdfDoc && origPdfBytes) {
+      verwerkPdf(mode, rotation).then(ok => {
+        if (!ok) {
+          alert('Kon de PDF niet op A3 plaatsen. Probeer het opnieuw of upload een afbeelding.');
+          return;
+        }
+        // Preview verversen: toon de zojuist gemaakte A3-PDF opnieuw.
+        origPdfBytes && renderPdfPage(1); // preview blijft de originele weergave; het bestand is nu A3
+        updateDpiMeter(calcDpi(2386, 3354)); // A3 bij 200 dpi als referentie
+        $('dpiSub').textContent = (mode === 'cover'
+          ? 'Vullend op A3 geplaatst (vector-PDF behouden). Inclusief 3mm afloop.'
+          : 'Passend op A3 geplaatst (vector-PDF behouden). Inclusief 3mm afloop.');
+        resetFitState();
+        fitApplied = mode;
+        const btn = mode === 'cover' ? $('btnFitCover') : $('btnFitContain');
+        if (btn) {
+          btn.classList.add('applied');
+          btn.textContent = mode === 'cover' ? 'Vullend op A3 ✓' : 'Passend op A3 ✓';
+        }
+        updateButton();
+      });
+      return;
+    }
+
     if(!imgEl) return;
 
     // A3 met 3mm afloop aan alle kanten = 303 x 426mm
@@ -2613,7 +2919,7 @@
     imgEl = new Image();
     imgEl.onload = () => {
       $('pdfLoading').style.display = 'none';
-      drawCanvas();
+      drawCanvas(true); // rotatie zit al in imgEl via getViewport — niet nog eens roteren
       // DPI: PDF native 72dpi, maar we schatten op basis van pagina-afmetingen
       // viewport bij scale=1 geeft puntgrootte, 1pt = 1/72 inch
       const nativeVP = page.getViewport({scale:1});
@@ -2633,16 +2939,17 @@
     if(!file) return;
     if(file.size > MAX_UPLOAD_BYTES) {
       // Niet blokkeren: de klant mag bestellen, maar het bestand gaat niet mee in
-      // de upload (te groot voor de payload) en moet via WeTransfer nagestuurd.
+      // de upload (te groot voor de payload) en moet per mail nagestuurd.
       alert('Let op: je bestand is ' + (file.size/1024/1024).toFixed(1) + ' MB, groter dan ' + MAX_UPLOAD_MB + ' MB.\n\n' +
             'Je kunt gewoon bestellen — maar je drukbestand wordt dan niet direct meegestuurd. ' +
-            'Na het plaatsen van je order vragen we je het bestand via WeTransfer naar ' +
+            'Na het plaatsen van je order vragen we je het bestand per mail naar ' +
             'print@extern.nl te sturen onder vermelding van je ordernummer.');
       // Bewust GEEN return: bestand wordt wel als state.file gezet voor de preview.
     }
     state.file = file;
     origFile = file;
     pdfDoc = null; pdfPage = 1; rotation = 0;
+    origPdfBytes = null;
     resetFitState();
 
     $('uploadZone').style.display = 'none';
@@ -2660,6 +2967,8 @@
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 
     if(isPdf) {
+      // Bewaar de originele PDF-bytes voor vectorgetrouwe bewerking (pdf-lib).
+      file.arrayBuffer().then(buf => { origPdfBytes = buf; }).catch(()=>{});
       loadPdf(file);
     } else {
       const reader = new FileReader();
@@ -2675,16 +2984,18 @@
       reader.readAsDataURL(file);
     }
     updateButton();
+    updatePrice();
   }
 
   function resetEditor() {
-    state.file = null; imgEl = null; origFile = null; rotation = 0; pdfDoc = null;
+    state.file = null; imgEl = null; origFile = null; rotation = 0; pdfDoc = null; origPdfBytes = null;
     resetFitState();
     $('uploadZone').style.display = '';
     $('editorPanel').classList.remove('visible');
     $('pdfPageNav').classList.remove('visible');
     $('fileInput').value = '';
     updateButton();
+    updatePrice();
   }
 
   // ── MEERDERE ONTWERPEN ───────────────────────────────────────────────────────
@@ -2701,6 +3012,25 @@
         const ctx = c.getContext('2d');
         ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
         ctx.drawImage(imgEl, 0, 0, c.width, c.height);
+        return c.toDataURL('image/jpeg', 0.7);
+      }
+    } catch (e) { /* stille fallback */ }
+    return null;
+  }
+
+  // Thumbnail van de achterzijde uit het achter-preview-canvas (indien gevuld).
+  function maakThumbnailAchter() {
+    try {
+      const src = $('achterCanvas');
+      if (src && src.width) {
+        const c = document.createElement('canvas');
+        const maxT = 88;
+        const ratio = src.width / src.height;
+        c.width  = ratio >= 1 ? maxT : Math.round(maxT * ratio);
+        c.height = ratio >= 1 ? Math.round(maxT / ratio) : maxT;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(src, 0, 0, c.width, c.height);
         return c.toDataURL('image/jpeg', 0.7);
       }
     } catch (e) { /* stille fallback */ }
@@ -2726,6 +3056,7 @@
       drukzijde:  state.drukzijde,
       naam:       state.file.name,
       thumbnail:  maakThumbnail(),
+      thumbnailAchter: state.drukzijde === 'dubbel' ? maakThumbnailAchter() : null,
     });
     // Editor + achterzijde resetten voor het volgende ontwerp; aantal terug naar 1.
     resetEditor();
@@ -2746,6 +3077,22 @@
     updateButton();
   }
 
+  // Past het aantal van een reeds toegevoegd ontwerp aan. `delta` (+1/-1) voor de
+  // knoppen, of een absolute waarde via het invoerveld (dan delta=null, val=waarde).
+  function wijzigOntwerpAantal(idx, delta, val) {
+    const o = ontwerpen[idx];
+    if (!o) return;
+    let nieuw;
+    if (delta != null) {
+      nieuw = (o.aantal || 1) + delta;
+    } else {
+      nieuw = parseInt(val) || 1;
+    }
+    o.aantal = Math.max(1, Math.min(9999, nieuw));
+    updatePrice();   // hertekent ook de lijst (renderOntwerpen) en herberekent staffel over totaal
+    updateButton();
+  }
+
   // Tekent de lijst met toegevoegde ontwerpen en beheert de toevoegknop-status.
   function renderOntwerpen() {
     const lijst = $('ontwerpenLijst');
@@ -2755,15 +3102,30 @@
 
     lijst.innerHTML = ontwerpen.map((o, i) => {
       const thumb = o.thumbnail
-        ? `<img class="ontwerp-thumb" src="${o.thumbnail}" alt="">`
+        ? `<img class="ontwerp-thumb" src="${o.thumbnail}" alt="voorzijde">`
         : `<div class="ontwerp-thumb"></div>`;
-      const zijde = o.drukzijde === 'dubbel' ? 'dubbelzijdig' : 'enkelzijdig';
+      const dubbel = o.drukzijde === 'dubbel';
+      // Bij dubbelzijdig: toon ook de achterzijde-thumbnail met een klein label.
+      const thumbAchter = dubbel
+        ? (o.thumbnailAchter
+            ? `<img class="ontwerp-thumb ontwerp-thumb-achter" src="${o.thumbnailAchter}" alt="achterzijde" title="Achterzijde">`
+            : `<div class="ontwerp-thumb ontwerp-thumb-achter" title="Achterzijde"></div>`)
+        : '';
+      const zijde = dubbel
+        ? '<span class="ontwerp-badge-dubbel">dubbelzijdig</span>'
+        : 'enkelzijdig';
       const naamEsc = (o.naam || 'ontwerp').replace(/</g, '&lt;');
       return `<div class="ontwerp-item">
-        ${thumb}
+        <div class="ontwerp-thumbs">${thumb}${thumbAchter}</div>
         <div class="ontwerp-info">
           <div class="ontwerp-naam">${naamEsc}</div>
-          <div class="ontwerp-meta">${o.aantal} stuks · ${zijde}</div>
+          <div class="ontwerp-meta">${zijde}</div>
+        </div>
+        <div class="ontwerp-qty">
+          <button type="button" class="ontwerp-qty-btn" onclick="wijzigOntwerpAantal(${i}, -1)" title="Minder">&minus;</button>
+          <input type="number" class="ontwerp-qty-input" min="1" max="9999" value="${o.aantal}"
+                 onchange="wijzigOntwerpAantal(${i}, null, this.value)" aria-label="Aantal voor dit ontwerp">
+          <button type="button" class="ontwerp-qty-btn" onclick="wijzigOntwerpAantal(${i}, 1)" title="Meer">+</button>
         </div>
         <button class="ontwerp-remove" onclick="verwijderOntwerp(${i})" title="Verwijder dit ontwerp">&times;</button>
       </div>`;
@@ -2921,57 +3283,52 @@
     });
 
     try {
-      btn.innerHTML = '<div class="spinner"></div> Bestand(en) uploaden...';
+      btn.innerHTML = '<div class="spinner"></div> Bestand(en) voorbereiden...';
 
-      // Bouw per ontwerp een payload-item. Bestanden >4 MB worden NIET meegestuurd
-      // (payloadlimiet); die volgen via WeTransfer. bestand_te_groot markeert dit.
-      let ietsTeGroot = false;
+      const mbTekst = n => (n / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB';
+
+      // Per ontwerp een payload-item. Een bestand dat in z'n eentje al boven
+      // MAX_UPLOAD_BYTES zit lezen we niet eens in: dat moet per mail komen.
       const ontwerpenPayload = [];
       for (const o of alleOntwerpen) {
-        const voorTeGroot   = o.file       && o.file.size       > MAX_UPLOAD_BYTES;
-        const achterTeGroot = o.fileAchter && o.fileAchter.size > MAX_UPLOAD_BYTES;
-        if (voorTeGroot || achterTeGroot) ietsTeGroot = true;
-
-        const prijsPerStuk = +(basisPrijs * drukFactorVoor(o.drukzijde)).toFixed(2);
+        const voorTeGroot   = !!(o.file       && o.file.size       > MAX_UPLOAD_BYTES);
+        const achterTeGroot = !!(o.fileAchter && o.fileAchter.size > MAX_UPLOAD_BYTES);
+        const prijsPerStuk  = +(basisPrijs * drukFactorVoor(o.drukzijde)).toFixed(2);
         ontwerpenPayload.push({
-          aantal:              o.aantal,
-          drukzijde:           o.drukzijde,
-          prijs_per_stuk:      prijsPerStuk,
-          bestandsnaam:        o.naam,
-          bestandsnaam_achter: o.fileAchter ? o.fileAchter.name : null,
-          bestand_data:        voorTeGroot   ? null : await leesBase64(o.file),
-          bestand_naam:        o.naam,
-          bestand_type:        o.file.type,
-          bestand_data_achter: (o.fileAchter && !achterTeGroot) ? await leesBase64(o.fileAchter) : null,
-          bestand_naam_achter: o.fileAchter ? o.fileAchter.name : null,
-          bestand_type_achter: o.fileAchter ? o.fileAchter.type : null,
-          bestand_te_groot:    voorTeGroot || achterTeGroot,
+          aantal:                 o.aantal,
+          drukzijde:              o.drukzijde,
+          prijs_per_stuk:         prijsPerStuk,
+          bestandsnaam:           o.naam,
+          bestandsnaam_achter:    o.fileAchter ? o.fileAchter.name : null,
+          bestand_data:           voorTeGroot ? null : await leesBase64(o.file),
+          bestand_naam:           o.naam,
+          bestand_type:           o.file.type,
+          bestand_grootte:        o.file.size,
+          bestand_data_achter:    (o.fileAchter && !achterTeGroot) ? await leesBase64(o.fileAchter) : null,
+          bestand_naam_achter:    o.fileAchter ? o.fileAchter.name : null,
+          bestand_type_achter:    o.fileAchter ? o.fileAchter.type : null,
+          bestand_grootte_achter: o.fileAchter ? o.fileAchter.size : null,
+          reden_voor:   voorTeGroot   ? `groter dan ${MAX_UPLOAD_MB} MB` : null,
+          reden_achter: achterTeGroot ? `groter dan ${MAX_UPLOAD_MB} MB` : null,
+          bestand_te_groot:       voorTeGroot || achterTeGroot,
         });
       }
-
-      // Eerste ontwerp ook in de "platte" velden zetten → backwards-compatible met
-      // de bestaande backend-verwerking (die verwacht één bestand op topniveau).
       const eerste = ontwerpenPayload[0];
 
-      // Payload-veiligheid: alle base64 gaat samen in één function-body (~6 MB
-      // Netlify-limiet). Bij veel/grote ontwerpen kan het totaal daar overheen.
-      // Schat de totale base64-grootte; is die te groot, stuur de bestanden dan
-      // NIET mee (order gaat door) en laat de klant alles via WeTransfer sturen.
-      const PAYLOAD_LIMIET_BYTES = 4.5 * 1024 * 1024; // veilige marge onder ~6 MB
-      let totaleBase64 = 0;
-      ontwerpenPayload.forEach(o => {
-        if (o.bestand_data)        totaleBase64 += o.bestand_data.length;
-        if (o.bestand_data_achter) totaleBase64 += o.bestand_data_achter.length;
-      });
-      if (totaleBase64 > PAYLOAD_LIMIET_BYTES) {
-        // Bestanden weglaten uit de payload; markeren als "te groot" zodat de
-        // successcherm-melding en de backend de WeTransfer-instructie tonen.
-        ontwerpenPayload.forEach(o => {
-          o.bestand_data = null; o.bestand_data_achter = null; o.bestand_te_groot = true;
+      // Overzicht van bestanden die NIET meegaan (naam, grootte, reden). Gaat mee
+      // in `bestelling`, zodat save-order (status + klantmail), gripp-order
+      // (offerte-omschrijving) en de admin het allemaal kunnen tonen.
+      const bepaalOntbrekend = () => {
+        const lijst = [];
+        ontwerpenPayload.forEach((o, i) => {
+          if (o.bestand_naam && !o.bestand_data)
+            lijst.push({ ontwerp: i + 1, zijde: 'voor', naam: o.bestand_naam, grootte: o.bestand_grootte, reden: o.reden_voor || 'niet meegestuurd' });
+          if (o.bestand_naam_achter && !o.bestand_data_achter)
+            lijst.push({ ontwerp: i + 1, zijde: 'achter', naam: o.bestand_naam_achter, grootte: o.bestand_grootte_achter, reden: o.reden_achter || 'niet meegestuurd' });
+          o.bestand_te_groot = !!((o.bestand_naam && !o.bestand_data) || (o.bestand_naam_achter && !o.bestand_data_achter));
         });
-        eerste.bestand_data = null; eerste.bestand_data_achter = null;
-        ietsTeGroot = true;
-      }
+        return lijst;
+      };
 
       // Samenvattende bestelling. `aantal` = totaal; prijs_per_stuk = die van het
       // eerste ontwerp (voor de oude offerteregel-fallback). De echte per-ontwerp
@@ -2993,63 +3350,124 @@
           prijs_per_stuk: o.prijs_per_stuk, bestandsnaam: o.bestandsnaam,
           bestandsnaam_achter: o.bestandsnaam_achter,
         })),
+        bestanden_ontbreken: [],
       };
 
-      // Stap 2: order naar Gripp
+      // Request-bodies. BELANGRIJK: bestanden gaan ALLEEN in ontwerpen[] mee —
+      // niet nog eens op topniveau. Tot 9 nov stond het eerste bestand er
+      // dubbel in, waardoor de body verdubbelde en orders vanaf ~2,2 MB door
+      // Netlify werden geweigerd (PS-97381). save-order vult de losse
+      // bestand_*-kolommen zelf uit ontwerpen[0].
+      const topNamen = () => ({
+        bestand_naam:        eerste.bestand_naam,
+        bestand_type:        eerste.bestand_type,
+        bestand_naam_achter: eerste.bestand_naam_achter,
+        bestand_type_achter: eerste.bestand_type_achter,
+      });
+      const maakGrippBody = () => JSON.stringify({
+        klant, bestelling, ...topNamen(), ontwerpen: ontwerpenPayload,
+      });
+      const maakSaveBody = (extra = {}) => JSON.stringify({
+        ordernummer, klant, bestelling, ...topNamen(),
+        bestand_te_groot: bestelling.bestanden_ontbreken.length > 0,
+        ontwerpen: ontwerpenPayload,
+        ...extra,
+      });
+
+      // Payload-limiet: Netlify weigert request-bodies boven ~6 MB nog vóórdat
+      // de function draait (geen log, geen order). We meten de ECHTE body en
+      // laten, als die te groot is, de grootste bestanden één voor één weg tot
+      // het past. Kleinere bestanden komen dan gewoon mee; alleen de weggelaten
+      // bestanden moeten per mail komen.
+      const BODY_LIMIET = 5.6 * 1024 * 1024;
+      bestelling.bestanden_ontbreken = bepaalOntbrekend();
+      const kandidaten = [];
+      ontwerpenPayload.forEach(o => {
+        if (o.bestand_data)        kandidaten.push({ o, zijde: 'voor',   len: o.bestand_data.length });
+        if (o.bestand_data_achter) kandidaten.push({ o, zijde: 'achter', len: o.bestand_data_achter.length });
+      });
+      kandidaten.sort((a, b) => b.len - a.len);
+      for (const k of kandidaten) {
+        if (maakSaveBody({ gripp_offerte_id: 'XXXXXXXX', gripp_fout: 'x'.repeat(200) }).length <= BODY_LIMIET) break;
+        const reden = 'bestelling werd in totaal te groot om in één keer te verzenden';
+        if (k.zijde === 'voor') { k.o.bestand_data = null;        k.o.reden_voor   = reden; }
+        else                    { k.o.bestand_data_achter = null; k.o.reden_achter = reden; }
+        bestelling.bestanden_ontbreken = bepaalOntbrekend();
+      }
+
+      // Stap 2: order naar Gripp. Mag falen (order komt dan via de admin alsnog
+      // in Gripp), maar we onthouden WAAROM, zodat dat in de admin zichtbaar is.
       btn.innerHTML = '<div class="spinner"></div> Order verwerken...';
       let grippData = {};
+      let grippFout = null;
       try {
         const grippResp = await fetch('/.netlify/functions/gripp-order', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            klant,
-            bestelling,
-            // Backwards-compatible topniveau-velden (eerste ontwerp):
-            bestand_data:        eerste.bestand_data,
-            bestand_naam:        eerste.bestand_naam,
-            bestand_data_achter: eerste.bestand_data_achter,
-            bestand_naam_achter: eerste.bestand_naam_achter,
-            // Volledige lijst voor multi-ontwerp verwerking:
-            ontwerpen:           ontwerpenPayload,
-          }),
+          body:    maakGrippBody(),
         });
-        grippData = await grippResp.json();
-      } catch (e) { console.error('gripp-order fout:', e); }
+        try { grippData = await grippResp.json(); } catch (_) { grippData = {}; }
+        if (!grippResp.ok || !grippData.gripp_offerte_id) {
+          grippFout = grippResp.status === 413
+            ? 'koppeling mislukt — verzoek te groot (HTTP 413)'
+            : `koppeling mislukt — HTTP ${grippResp.status}${grippData.error ? ': ' + grippData.error : ''}`;
+        }
+      } catch (e) {
+        console.error('gripp-order fout:', e);
+        grippFout = 'koppeling mislukt — geen antwoord van de server (' + (e.message || 'netwerkfout') + ')';
+      }
 
-      // Stap 3: order + bestanden opslaan in admin
-      let opgeslagen = false;
-      try {
-        const saveResp = await fetch('/.netlify/functions/save-order', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            ordernummer,
-            klant,
-            bestelling,
-            gripp_offerte_id:    grippData.gripp_offerte_id || null,
-            // Backwards-compatible topniveau-velden (eerste ontwerp):
-            bestand_data:        eerste.bestand_data,
-            bestand_naam:        eerste.bestand_naam,
-            bestand_type:        eerste.bestand_type,
-            bestand_data_achter: eerste.bestand_data_achter,
-            bestand_naam_achter: eerste.bestand_naam_achter,
-            bestand_type_achter: eerste.bestand_type_achter,
-            bestand_te_groot:    ietsTeGroot,
-            // Volledige lijst:
-            ontwerpen:           ontwerpenPayload,
-          }),
+      // Stap 3: order + bestanden opslaan in de admin.
+      const probeerOpslaan = async (bodyStr) => {
+        try {
+          const r = await fetch('/.netlify/functions/save-order', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: bodyStr,
+          });
+          let data = {};
+          try { data = await r.json(); } catch (_) {}
+          return { ok: r.ok, status: r.status, data };
+        } catch (e) {
+          console.error('save-order fout:', e);
+          return { ok: false, status: 0, fout: e.message || 'netwerkfout' };
+        }
+      };
+      const gripVelden = () => ({
+        gripp_offerte_id: grippData.gripp_offerte_id || null,
+        gripp_fout:       grippFout,
+      });
+
+      let opslag = await probeerOpslaan(maakSaveBody(gripVelden()));
+
+      // Vangnet: lukt opslaan MET bestanden niet (bv. toch te groot, time-out),
+      // sla de order dan ZONDER bestanden op. Dan staat hij in elk geval in de
+      // admin (status 'wacht_op_bestanden', met de reden erbij) en krijgt de
+      // klant een mail met het verzoek de bestanden per mail te sturen.
+      // Een 409 (ordernummer bestaat al) heeft geen zin om opnieuw te proberen.
+      if (!opslag.ok && opslag.status !== 409) {
+        const oorzaak = opslag.status === 413 ? 'verzoek te groot (HTTP 413)'
+          : opslag.status === 0 ? 'geen antwoord van de server (' + (opslag.fout || 'netwerkfout') + ')'
+          : `HTTP ${opslag.status}${opslag.data?.error ? ': ' + opslag.data.error : ''}`;
+        const reden = 'upload mislukt: ' + oorzaak;
+        ontwerpenPayload.forEach(o => {
+          if (o.bestand_data)        { o.bestand_data = null;        o.reden_voor   = reden; }
+          if (o.bestand_data_achter) { o.bestand_data_achter = null; o.reden_achter = reden; }
         });
-        opgeslagen = saveResp.ok;
-      } catch (e) { console.error('save-order fout:', e); }
+        bestelling.bestanden_ontbreken = bepaalOntbrekend();
+        opslag = await probeerOpslaan(maakSaveBody({
+          ...gripVelden(),
+          opslag_melding: `Eerste opslagpoging met bestanden mislukt (${oorzaak}); order daarna zonder bestanden opgeslagen.`
+            + (grippData.gripp_offerte_id ? ' Controleer de Gripp-offerte: daar zijn de bestanden mogelijk wél bijgevoegd.' : ''),
+        }));
+      }
 
-      // Stap 4: bevestiging koppelen aan werkelijk succes (zie eerdere fix).
-      if (!opgeslagen) {
-        alert('Let op: je bestelling kon niet worden verwerkt.\n\n' +
-              'Waarschijnlijk is een drukbestand te groot. Mail je bestand(en) naar ' +
-              'print@extern.nl onder vermelding van ordernummer #' + ordernummer + ', ' +
-              'dan nemen wij je bestelling direct in behandeling.\n\n' +
-              'Je kunt ook contact opnemen via 072 567 00 00.');
+      const ontbrekend  = bestelling.bestanden_ontbreken;
+      const ietsTeGroot = ontbrekend.length > 0;
+
+      // Stap 4: bevestiging koppelen aan werkelijk succes.
+      if (!opslag.ok) {
+        alert('Let op: je bestelling kon door een technische storing niet worden opgeslagen.\n\n' +
+              'Mail je bestelling en drukbestand(en) naar print@extern.nl onder vermelding van ' +
+              'ordernummer #' + ordernummer + ', of bel 072 567 00 00 — dan nemen wij hem direct in behandeling.');
         btn.innerHTML = 'Bestelling plaatsen';
         btn.disabled  = false;
         return;
@@ -3061,11 +3479,16 @@
       $('successOverlay').classList.add('visible');
 
       if (ietsTeGroot) {
+        const meerdere = ontwerpenPayload.length > 1;
+        const lijst = ontbrekend.map(f => '- ' +
+          (meerdere ? 'Ontwerp ' + f.ontwerp + (f.zijde === 'achter' ? ' (achterzijde)' : '') + ': ' : (f.zijde === 'achter' ? 'Achterzijde: ' : '')) +
+          f.naam + (f.grootte ? ' (' + mbTekst(f.grootte) + ')' : '')).join('\n');
         alert('Je bestelling #' + ordernummer + ' is geplaatst!\n\n' +
-              'Let op: één of meer drukbestanden zijn groter dan ' + MAX_UPLOAD_MB + ' MB en konden niet ' +
-              'direct worden meegestuurd. Stuur die bestand(en) via WeTransfer ' +
-              '(wetransfer.com) naar print@extern.nl, onder vermelding van ' +
-              'ordernummer #' + ordernummer + '.\n\n' +
+              'Let op: ' + (ontbrekend.length > 1 ? 'deze bestanden konden' : 'dit bestand kon') + ' niet direct worden meegestuurd:\n' +
+              lijst + '\n\n' +
+              'Stuur ' + (ontbrekend.length > 1 ? 'ze' : 'het') + ' als bijlage per mail naar print@extern.nl onder ' +
+              'vermelding van ordernummer #' + ordernummer + ' (te groot voor mail? Gebruik WeTransfer). ' +
+              'Je ontvangt deze instructie ook in je orderbevestiging.\n\n' +
               'Zodra wij je bestand(en) hebben, gaan wij direct aan de slag.');
       }
 

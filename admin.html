@@ -102,6 +102,12 @@ html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--s
 .tab-item.active.productie { background: #d97706; }
 .tab-item.active.verzonden { background: #7c3aed; }
 .tab-item.active.geleverd { background: var(--green); }
+.tab-item.active.wacht { background: #b45309; }
+.tab-teller { display: inline-block; min-width: 16px; margin-left: 4px; padding: 0 5px; border-radius: 8px; background: #b45309; color: #fff; font-size: 10px; text-align: center; }
+.tab-item.active .tab-teller { background: rgba(255,255,255,0.25); }
+.melding-box { margin-top: 8px; padding: 8px 10px; border-left: 3px solid #b45309; background: #fffbeb; color: #78350f; font-size: 11px; line-height: 1.5; white-space: pre-wrap; border-radius: 4px; }
+.melding-kort { display: block; margin-top: 3px; font-size: 10px; color: #92400e; max-width: 190px; white-space: normal; line-height: 1.35; }
+.tbl tr.rij-wacht td { background: #fffbeb; }
 
 .search-input { padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 12px; outline: none; background: var(--surface2); transition: border-color .15s; }
 .search-input:focus { border-color: var(--green); background: white; }
@@ -213,6 +219,7 @@ html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--s
           <div class="tab-bar">
             <button class="tab-item active" onclick="setTab('alle',this)">Alle</button>
             <button class="tab-item nieuw" onclick="setTab('nieuw',this)">● Nieuw</button>
+            <button class="tab-item wacht" onclick="setTab('wacht_op_bestanden',this)">Wacht op bestanden <span class="tab-teller" id="tabWachtCnt">0</span></button>
             <button class="tab-item bevestigd" onclick="setTab('bevestigd',this)">✓ Bevestigd</button>
             <button class="tab-item productie" onclick="setTab('in_productie',this)">⚙ In productie</button>
             <button class="tab-item verzonden" onclick="setTab('verzonden',this)">↑ Verzonden</button>
@@ -275,6 +282,7 @@ html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--s
     <div class="md-field"><label>Nieuwe status</label>
       <select id="moNieuweStatus">
         <option value="nieuw">Nieuw</option>
+        <option value="wacht_op_bestanden">Wacht op bestanden</option>
         <option value="bevestigd">Bevestigd</option>
         <option value="in_productie">In productie</option>
         <option value="verzonden">Verzonden</option>
@@ -437,6 +445,8 @@ async function laadAlles() {
 function vulDashboard() {
   $('statOrders').textContent = alleOrders.length;
   $('statNieuw').textContent  = alleOrders.filter(o => o.status === 'nieuw').length;
+  const wachtCnt = alleOrders.filter(o => o.status === 'wacht_op_bestanden').length;
+  if ($('tabWachtCnt')) { $('tabWachtCnt').textContent = wachtCnt; $('tabWachtCnt').style.display = wachtCnt ? '' : 'none'; }
   $('statGripp').textContent  = alleOrders.filter(o => o.gripp_offerte_id).length + '/' + alleOrders.length;
 
   const omzet = alleOrders.reduce((s, o) => {
@@ -473,7 +483,7 @@ function renderOrders() {
 
   $('ordersLijst').innerHTML = lijst.map(o => {
     const totaal = ((o.bestelling?.prijs_per_stuk||0) * (o.bestelling?.aantal||0));
-    return `<tr style="cursor:pointer" onclick="toggleDetail('${o.ordernummer}')">
+    return `<tr class="${o.status === 'wacht_op_bestanden' ? 'rij-wacht' : ''}" style="cursor:pointer" onclick="toggleDetail('${o.ordernummer}')">
       <td class="mono" style="font-weight:600">${o.ordernummer}</td>
       <td>
         <div>${o.klant?.naam || '—'}</div>
@@ -484,16 +494,21 @@ function renderOrders() {
       <td class="mono">€ ${totaal.toFixed(2).replace('.',',')}</td>
       <td>${Array.isArray(o.ontwerpen) && o.ontwerpen.length > 1
         ? `<span style="font-size:11px;color:var(--muted)">${o.ontwerpen.length} bestanden<br>→ open details</span>`
-        : (o.bestand_naam
+        : (o.bestand_naam && o.heeft_bestand === false
+          ? `<span class="badge badge-yellow" title="${(o.bestand_naam||'').replace(/"/g,'')}">Ontbreekt — volgt per mail</span>`
+          : o.bestand_naam
           ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();downloadBestand('${o.ordernummer}','${o.bestand_naam}')">⬇ ${o.bestand_naam.substring(0,20)}${o.bestand_naam.length>20?'…':''}</button>`
           : '<span style="color:var(--muted);font-size:11px">Geen bestand</span>')
-        + (o.bestand_naam_achter && !(Array.isArray(o.ontwerpen) && o.ontwerpen.length > 1)
+        + (o.bestand_naam_achter && o.heeft_bestand_achter === false && !(Array.isArray(o.ontwerpen) && o.ontwerpen.length > 1)
+          ? `<br><span class="badge badge-yellow" style="margin-top:3px">Achterzijde ontbreekt</span>`
+          : '')
+        + (o.bestand_naam_achter && o.heeft_bestand_achter !== false && !(Array.isArray(o.ontwerpen) && o.ontwerpen.length > 1)
           ? `<button class="btn btn-ghost btn-sm" style="margin-top:3px" onclick="event.stopPropagation();downloadBestand('${o.ordernummer}','${o.bestand_naam_achter}','achter')">⬇ Achterzijde</button>`
           : '')}</td>
       <td>${o.gripp_offerte_id
         ? `<span class="badge badge-green">✓ #${o.gripp_offerte_id}</span>`
         : `<button class="btn btn-sm btn-green" onclick="event.stopPropagation();stuurNaarGripp('${o.ordernummer}')">→ Gripp</button>`}</td>
-      <td>${statusBadge(o.status)}</td>
+      <td>${statusBadge(o.status)}${o.systeem_melding ? `<span class="melding-kort">${escHtml(meldingKort(o))}</span>` : ''}</td>
       <td style="font-size:11px">${datumFmt(o.aangemaakt)}</td>
       <td onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-sm" onclick="openStatusModal('${o.ordernummer}','${o.status}')">Status →</button>
@@ -520,8 +535,8 @@ function renderOrders() {
                 <div style="padding:4px 0;border-top:1px solid var(--line)">
                   <div>Ontwerp ${i+1}: ${ont.aantal} × ${ont.drukzijde === 'dubbel' ? 'dubbelzijdig' : 'enkelzijdig'} — € ${(Number(ont.prijs_per_stuk)||0).toFixed(2).replace('.',',')} p/st</div>
                   <div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap">
-                    ${ont.bestandsnaam ? `<button class="btn btn-ghost btn-sm" onclick="downloadBestand('${o.ordernummer}','${(ont.bestandsnaam||'').replace(/'/g,'')}','voor',${i})">⬇ ${(ont.bestandsnaam||'').substring(0,18)}</button>` : '<span style="color:var(--muted);font-size:11px">geen bestand</span>'}
-                    ${ont.bestandsnaam_achter ? `<button class="btn btn-ghost btn-sm" onclick="downloadBestand('${o.ordernummer}','${(ont.bestandsnaam_achter||'').replace(/'/g,'')}','achter',${i})">⬇ achterzijde</button>` : ''}
+                    ${ont.bestandsnaam && ont.heeft_bestand === false ? `<span class="badge badge-yellow">${escHtml((ont.bestandsnaam||'').substring(0,18))} ontbreekt</span>` : ont.bestandsnaam ? `<button class="btn btn-ghost btn-sm" onclick="downloadBestand('${o.ordernummer}','${(ont.bestandsnaam||'').replace(/'/g,'')}','voor',${i})">⬇ ${(ont.bestandsnaam||'').substring(0,18)}</button>` : '<span style="color:var(--muted);font-size:11px">geen bestand</span>'}
+                    ${ont.bestandsnaam_achter && ont.heeft_bestand_achter === false ? `<span class="badge badge-yellow">achterzijde ontbreekt</span>` : ont.bestandsnaam_achter ? `<button class="btn btn-ghost btn-sm" onclick="downloadBestand('${o.ordernummer}','${(ont.bestandsnaam_achter||'').replace(/'/g,'')}','achter',${i})">⬇ achterzijde</button>` : ''}
                   </div>
                 </div>
               `).join('')}
@@ -536,6 +551,8 @@ function renderOrders() {
             <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Systeem</div>
             <div>Aangemaakt: ${datumFmt(o.aangemaakt)}</div>
             ${o.gripp_offerte_id ? `<div>Gripp offerte: #${o.gripp_offerte_id}</div>` : '<div style="color:var(--muted)">Nog niet naar Gripp</div>'}
+            ${o.systeem_melding ? `<div class="melding-box">${escHtml(o.systeem_melding)}</div>` : ''}
+            ${o.status === 'wacht_op_bestanden' ? `<div style="margin-top:6px;color:var(--muted);font-size:11px">Bestanden binnen per mail? Zet de status op <em>Bevestigd</em> of <em>In productie</em>.</div>` : ''}
           </div>
         </div>
       </td>
@@ -563,17 +580,17 @@ function renderBestanden() {
     if (Array.isArray(o.ontwerpen) && o.ontwerpen.length > 1) {
       // Multi-ontwerp order: een rij per bestand, met ontwerp-index voor download.
       o.ontwerpen.forEach((ont, i) => {
-        if (ont.bestandsnaam) rijen.push({ o, naam: ont.bestandsnaam, zijde: 'voor', idx: i,
+        if (ont.bestandsnaam) rijen.push({ o, naam: ont.bestandsnaam, zijde: 'voor', idx: i, ontbreekt: ont.heeft_bestand === false,
           label: ` <span class="badge badge-green">ontwerp ${i+1}</span>` });
-        if (ont.bestandsnaam_achter) rijen.push({ o, naam: ont.bestandsnaam_achter, zijde: 'achter', idx: i,
+        if (ont.bestandsnaam_achter) rijen.push({ o, naam: ont.bestandsnaam_achter, zijde: 'achter', idx: i, ontbreekt: ont.heeft_bestand_achter === false,
           label: ` <span class="badge badge-green">ontwerp ${i+1}</span> <span class="badge badge-yellow">achterzijde</span>` });
       });
     } else {
-      if (o.bestand_naam) rijen.push({ o, naam: o.bestand_naam, zijde: 'voor', idx: null, label: '' });
-      if (o.bestand_naam_achter) rijen.push({ o, naam: o.bestand_naam_achter, zijde: 'achter', idx: null, label: ' <span class="badge badge-yellow">achterzijde</span>' });
+      if (o.bestand_naam) rijen.push({ o, naam: o.bestand_naam, zijde: 'voor', idx: null, ontbreekt: o.heeft_bestand === false, label: '' });
+      if (o.bestand_naam_achter) rijen.push({ o, naam: o.bestand_naam_achter, zijde: 'achter', idx: null, ontbreekt: o.heeft_bestand_achter === false, label: ' <span class="badge badge-yellow">achterzijde</span>' });
     }
   });
-  $('bestandenLijst').innerHTML = rijen.map(({ o, naam, zijde, idx, label }) => `
+  $('bestandenLijst').innerHTML = rijen.map(({ o, naam, zijde, idx, label, ontbreekt }) => `
     <tr>
       <td>
         <div style="font-weight:600;font-family:'JetBrains Mono',monospace;font-size:11px">${naam}${label}</div>
@@ -584,7 +601,9 @@ function renderBestanden() {
         <div style="font-size:10px;color:var(--muted)">${o.klant?.email || ''}</div>
       </td>
       <td style="font-size:11px">${datumFmt(o.aangemaakt)}</td>
-      <td><button class="btn btn-green btn-sm" onclick="downloadBestand('${o.ordernummer}','${naam.replace(/'/g,'')}','${zijde}'${idx!=null?','+idx:''})">⬇ Download</button></td>
+      <td>${ontbreekt
+        ? '<span class="badge badge-yellow">Ontbreekt — volgt per mail</span>'
+        : `<button class="btn btn-green btn-sm" onclick="downloadBestand('${o.ordernummer}','${naam.replace(/'/g,'')}','${zijde}'${idx!=null?','+idx:''})">⬇ Download</button>`}</td>
     </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Nog geen bestanden opgeslagen</td></tr>';
 }
 
@@ -833,9 +852,21 @@ function datumFmt(d) {
          dt.toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit' });
 }
 
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// Korte reden onder de statusbadge; volledige tekst staat in de detail-uitklap.
+function meldingKort(o) {
+  const m = String(o.systeem_melding || '');
+  const n = (m.match(/^•/gm) || []).length;
+  if (n) return `${n} bestand${n > 1 ? 'en' : ''} ontbreekt — klant gemaild`;
+  return m.split('\n')[0].substring(0, 90);
+}
+
 function statusBadge(s) {
   const map = {
     nieuw:       ['badge-blue',   'Nieuw'],
+    wacht_op_bestanden: ['badge-yellow', 'Wacht op bestanden'],
     bevestigd:   ['badge-green',  'Bevestigd'],
     in_productie:['badge-yellow', 'In productie'],
     verzonden:   ['badge-blue',   'Verzonden'],
